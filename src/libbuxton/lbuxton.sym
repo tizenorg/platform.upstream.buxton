@@ -1,0 +1,27 @@
+BUXTON_1 {
+	global:
+		buxton_set_conf_file;
+		buxton_open;
+		buxton_close;
+		buxton_set_value;
+		buxton_set_label;
+		buxton_create_group;
+		buxton_remove_group;
+		buxton_get_value;
+		buxton_unset_value;
+		buxton_register_notification;
+		buxton_unregister_notification;
+		buxton_client_handle_response;
+		buxton_key_get_group;
+		buxton_key_get_name;
+		buxton_key_get_layer;
+		buxton_key_get_type;
+		buxton_key_create;
+		buxton_key_free;
+		buxton_response_status;
+		buxton_response_type;
+		buxton_response_key;
+		buxton_response_value;
+	local:
+		*;
+};

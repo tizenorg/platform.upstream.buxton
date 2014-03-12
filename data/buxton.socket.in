@@ -1,0 +1,8 @@
+[Unit]
+Description=Buxton Configuration Service
+
+[Socket]
+ListenStream=@BUXTON_SOCKET@
+
+[Install]
+WantedBy=sockets.target
