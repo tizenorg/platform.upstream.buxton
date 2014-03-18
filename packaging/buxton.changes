@@ -1,0 +1,5 @@
+* Tue Mar 18 2014 Patrick McCarty <patrick.mccarty@linux.intel.com> f9093df
+- Fix double memory free in db_for_resource
+- Add packaging for v1
+- Import upstream release, v1
+
