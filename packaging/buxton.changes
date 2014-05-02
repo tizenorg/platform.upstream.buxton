@@ -1,3 +1,6 @@
+* Fri May 02 2014 Patrick McCarty <patrick.mccarty@linux.intel.com> upstream/2@b125f1b
+- Update to the v2 release. This is a bug-fix release.
+
 * Tue Mar 18 2014 Patrick McCarty <patrick.mccarty@linux.intel.com> f9093df
 - Fix double memory free in db_for_resource
 - Add packaging for v1
