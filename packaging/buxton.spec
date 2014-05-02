@@ -1,5 +1,5 @@
 Name:           buxton
-Version:        1
+Version:        2
 Release:        0
 License:        LGPL-2.1+
 Summary:        A security-enabled configuration system
