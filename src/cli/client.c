@@ -162,7 +162,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		   char *one, char *two, char *three, char *four)
 {
 	BuxtonString value;
-	_cleanup_buxton_key_ BuxtonKey key;
+	BuxtonKey key;
 	BuxtonData set;
 	bool ret = false;
 
@@ -402,7 +402,7 @@ void get_value_callback(BuxtonResponse response, void *data)
 bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 		   char *one, char *two, char *three, __attribute__((unused)) char * four)
 {
-	_cleanup_buxton_key_ BuxtonKey key;
+	BuxtonKey key;
 	BuxtonData get;
 	_cleanup_free_ char *prefix = NULL;
 	_cleanup_free_ char *group = NULL;
@@ -410,14 +410,21 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	BuxtonString dlabel;
 	bool ret = false;
 	int32_t ret_val;
+	int r;
 
 	memzero((void*)&get, sizeof(BuxtonData));
 	if (three != NULL) {
 		key = buxton_key_create(two, three, one, type);
-		asprintf(&prefix, "[%s] ", one);
+		r = asprintf(&prefix, "[%s] ", one);
+		if (!r) {
+			abort();
+		}
 	} else {
 		key = buxton_key_create(one, two, NULL, type);
-		asprintf(&prefix, " ");
+		r = asprintf(&prefix, " ");
+		if (!r) {
+			abort();
+		}
 	}
 
 	if (!key) {
@@ -549,7 +556,7 @@ bool cli_unset_value(BuxtonControl *control,
 		     char *one, char *two, char *three,
 		     __attribute__((unused)) char *four)
 {
-	_cleanup_buxton_key_ BuxtonKey key;
+	BuxtonKey key;
 
 	key = buxton_key_create(two, three, one, type);
 

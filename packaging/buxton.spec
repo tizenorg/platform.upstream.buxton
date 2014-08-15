@@ -8,7 +8,7 @@ Group:          System/Configuration
 Source0:        %{name}-%{version}.tar.xz
 Source1:        tizen.conf
 Source1001:     %{name}.manifest
-BuildRequires:  attr-devel
+BuildRequires:  libattr-devel
 BuildRequires:  gdbm-devel
 BuildRequires:  pkgconfig(check)
 BuildRequires:  pkgconfig(systemd)
