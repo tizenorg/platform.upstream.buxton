@@ -287,13 +287,18 @@ bool buxton_direct_set_value(BuxtonControl *control,
 		goto fail;
 	}
 
+	if (layer->readonly) {
+		buxton_debug("Read-only layer!\n");
+		goto fail;
+	}
+
 	backend = backend_for_layer(config, layer);
 	assert(backend);
 
 	layer->uid = control->client.uid;
 	ret = backend->set_value(layer, key, data, l);
 	if (ret) {
-		buxton_debug("set value failed\n");
+		buxton_debug("set value failed: %s\n", strerror(ret));
 	} else {
 		r = true;
 	}
@@ -323,11 +328,16 @@ bool buxton_direct_set_label(BuxtonControl *control,
 		goto fail;
 	}
 
+	if (layer->readonly) {
+		buxton_debug("Read-only layer!\n");
+		goto fail;
+	}
+
 	if (layer->type == LAYER_SYSTEM) {
 		char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
 		bool skip_check = (root_check && streq(root_check, "0"));
 
-		/* FIXME: should check client's capability set instead of UID */
+		//FIXME: should check client's capability set instead of UID
 		if (control->client.uid != 0 && !skip_check) {
 			buxton_debug("Not permitted to create group '%s'\n", key->group.value);
 			goto fail;
@@ -343,7 +353,7 @@ bool buxton_direct_set_label(BuxtonControl *control,
 	layer->uid = control->client.uid;
 	ret = backend->set_value(layer, key, NULL, label);
 	if (ret) {
-		buxton_debug("set label failed\n");
+		buxton_debug("set label failed: %s\n", strerror(ret));
 	} else {
 		r = true;
 	}
@@ -393,11 +403,16 @@ bool buxton_direct_create_group(BuxtonControl *control,
 		goto fail;
 	}
 
+	if (layer->readonly) {
+		buxton_debug("Read-only layer!\n");
+		goto fail;
+	}
+
 	if (layer->type == LAYER_SYSTEM) {
 		char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
 		bool skip_check = (root_check && streq(root_check, "0"));
 
-		/* FIXME: should check client's capability set instead of UID */
+		//FIXME: should check client's capability set instead of UID
 		if (control->client.uid != 0 && !skip_check) {
 			buxton_debug("Not permitted to create group '%s'\n", key->group.value);
 			goto fail;
@@ -434,7 +449,7 @@ bool buxton_direct_create_group(BuxtonControl *control,
 	layer->uid = control->client.uid;
 	ret = backend->set_value(layer, key, data, dlabel);
 	if (ret) {
-		buxton_debug("create group failed\n");
+		buxton_debug("create group failed: %s\n", strerror(ret));
 	} else {
 		r = true;
 	}
@@ -473,11 +488,16 @@ bool buxton_direct_remove_group(BuxtonControl *control,
 		goto fail;
 	}
 
+	if (layer->readonly) {
+		buxton_debug("Read-ony layer!\n");
+		goto fail;
+	}
+
 	if (layer->type == LAYER_SYSTEM) {
 		char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
 		bool skip_check = (root_check && streq(root_check, "0"));
 
-		/* FIXME: should check client's capability set instead of UID */
+		//FIXME: should check client's capability set instead of UID
 		if (control->client.uid != 0 && !skip_check) {
 			buxton_debug("Not permitted to remove group '%s'\n", key->group.value);
 			goto fail;
@@ -502,7 +522,7 @@ bool buxton_direct_remove_group(BuxtonControl *control,
 
 	ret = backend->unset_value(layer, key, NULL, NULL);
 	if (ret) {
-		buxton_debug("remove group failed\n");
+		buxton_debug("remove group failed: %s\n", strerror(ret));
 	} else {
 		r = true;
 	}
@@ -603,13 +623,17 @@ bool buxton_direct_unset_value(BuxtonControl *control,
 		return false;
 	}
 
+	if (layer->readonly) {
+		buxton_debug("Read-only layer!\n");
+		return false;
+	}
 	backend = backend_for_layer(config, layer);
 	assert(backend);
 
 	layer->uid = control->client.uid;
 	ret = backend->unset_value(layer, key, NULL, NULL);
 	if (ret) {
-		buxton_debug("Unset value failed\n");
+		buxton_debug("Unset value failed: %s\n", strerror(ret));
 	} else {
 		r = true;
 	}
