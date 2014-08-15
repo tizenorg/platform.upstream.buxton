@@ -237,6 +237,17 @@ fail:
 	return false;
 }
 
+void lock_mutex(void)
+{
+	buxton_debug("Value of mutex %d", callback_guard.__data.__lock);
+	pthread_mutex_lock(&callback_guard);
+}
+
+void unlock_mutex(void)
+{
+	pthread_mutex_unlock(&callback_guard);
+}
+
 void handle_callback_response(BuxtonControlMessage msg, uint32_t msgid,
 			      BuxtonData *list, size_t count)
 {
@@ -253,8 +264,14 @@ void handle_callback_response(BuxtonControlMessage msg, uint32_t msgid,
 			return;
 		}
 
+		/*
+		* unlocking mutex to be able to call other client api's
+		* in notification callbacks
+		*/
+		(void)pthread_mutex_unlock(&callback_guard);
 		run_callback((BuxtonCallback)(nv->cb), nv->data, count, list,
 			     BUXTON_CONTROL_CHANGED, nv->key);
+		(void)pthread_mutex_lock(&callback_guard);
 		return;
 	}
 

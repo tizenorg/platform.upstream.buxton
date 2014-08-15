@@ -63,6 +63,7 @@ typedef struct BuxtonDaemon {
 	struct pollfd *pollfds;
 	client_list_item *client_list;
 	Hashmap *notify_mapping;
+	Hashmap *client_key_mapping;
 	BuxtonControl buxton;
 } BuxtonDaemon;
 
@@ -226,6 +227,13 @@ void add_pollfd(BuxtonDaemon *self, int fd, short events, bool a);
  * @return None
  */
 void del_pollfd(BuxtonDaemon *self, nfds_t i);
+
+/**
+ * Setup a client's smack label
+ * @param cl Client to set smack label on
+ * @return None
+ */
+void handle_smack_label(client_list_item *cl);
 
 /**
  * Handle a client connection
