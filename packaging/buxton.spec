@@ -1,6 +1,6 @@
 Name:           buxton
 Version:        2
-Release:        0
+Release:        1
 License:        LGPL-2.1+
 Summary:        A security-enabled configuration system
 Url:            https://github.com/sofar/buxton
@@ -8,7 +8,7 @@ Group:          System/Configuration
 Source0:        %{name}-%{version}.tar.xz
 Source1:        tizen.conf
 Source1001:     %{name}.manifest
-BuildRequires:  attr-devel
+BuildRequires:  libattr-devel
 BuildRequires:  gdbm-devel
 BuildRequires:  pkgconfig(check)
 BuildRequires:  pkgconfig(systemd)
@@ -75,11 +75,11 @@ fi
 %postun -p /sbin/ldconfig
 
 %docs_package
-%license docs/LICENSE.MIT
+#%license docs/LICENSE.MIT
 
 %files
 %manifest %{name}.manifest
-%license LICENSE.LGPL2.1
+#%license LICENSE.LGPL2.1
 %config(noreplace) %{_sysconfdir}/buxton.conf
 %{_bindir}/buxtonctl
 %{_libdir}/buxton/*.so
