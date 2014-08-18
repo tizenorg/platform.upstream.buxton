@@ -1,6 +1,6 @@
 
 AC_PREREQ([2.68])
-AC_INIT([buxton],[2],[william.douglas@intel.com],[buxton],[https://github.com/sofar/buxton])
+AC_INIT([buxton],[3],[william.douglas@intel.com],[buxton],[https://github.com/sofar/buxton])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror -Wno-portability silent-rules subdir-objects color-tests no-dist-gzip dist-xz])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
@@ -77,7 +77,7 @@ PKG_CHECK_MODULES([SYSTEMD], [libsystemd-daemon])
 # Checks for header files.
 AC_FUNC_ALLOCA
 AC_HEADER_STDBOOL
-AC_CHECK_HEADERS([attr/xattr.h], [], [AC_MSG_ERROR([Unable to fin xattr headers])])
+AC_CHECK_HEADERS([attr/xattr.h], [], [AC_MSG_ERROR([Unable to find xattr headers])])
 AC_CHECK_HEADERS([fcntl.h])
 AC_CHECK_HEADERS([gdbm.h], [], [AC_MSG_ERROR([Unable to find gdbm headers])])
 AC_CHECK_HEADERS([inttypes.h])
@@ -161,6 +161,13 @@ AS_IF([test "x$enable_debug" = "xyes"],
 	[AC_DEFINE([NDEBUG], [1], [Debugging and assertions disabled])])
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = x"yes"])
 
+AC_ARG_ENABLE(manpages, AS_HELP_STRING([--enable-manpages], [enable man pages @<:@default=yes@:>@]),
+	      [], [enable_manpages=yes])
+AS_IF([test "x$enable_manpages" = "xyes"],
+	[AC_DEFINE([MANPAGE], [1], [Man pages will be included])],
+	[AC_DEFINE([NMANPAGE], [1], [Man pages will not be included])])
+AM_CONDITIONAL([MANPAGE], [test x$enable_manpages = x"yes"])
+
 have_coverage=no
 AC_ARG_ENABLE(coverage, AS_HELP_STRING([--enable-coverage], [enable test coverage]))
 if test "x$enable_coverage" = "xyes" ; then
@@ -232,4 +239,5 @@ AC_MSG_RESULT([
         debug:                  ${enable_debug}
         demos:                  ${enable_demos}
         coverage:               ${have_coverage}
+        manpages:               ${enable_manpages}
 ])

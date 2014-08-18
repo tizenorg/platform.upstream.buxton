@@ -894,42 +894,43 @@ pkgconfiglibdir = $(libdir)/pkgconfig
 pkgconfiglib_DATA = \
 	data/libbuxton.pc
 
-dist_man_MANS = \
-	docs/buxton.7 \
-	docs/buxtonctl.1 \
-	docs/buxton-api.7 \
-	docs/buxton.conf.5 \
-	docs/buxtond.8 \
-	docs/buxton-protocol.7 \
-	docs/buxton-security.7 \
-	docs/buxton_client_handle_response.3 \
-	docs/buxton_close.3 \
-	docs/buxton_create_group.3 \
-	docs/buxton_get_value.3 \
-	docs/buxton_key_create.3 \
-	docs/buxton_key_free.3 \
-	docs/buxton_key_get_group.3 \
-	docs/buxton_key_get_layer.3 \
-	docs/buxton_key_get_name.3 \
-	docs/buxton_key_get_type.3 \
-	docs/buxton_open.3 \
-	docs/buxton_register_notification.3 \
-	docs/buxton_remove_group.3 \
-	docs/buxton_response_key.3 \
-	docs/buxton_response_status.3 \
-	docs/buxton_response_type.3 \
-	docs/buxton_response_value.3 \
-	docs/buxton_set_conf_file.3 \
-	docs/buxton_set_label.3 \
-	docs/buxton_set_value.3 \
-	docs/buxton_unregister_notification.3 \
-	docs/buxton_unset_value.3
+@MANPAGE_TRUE@dist_man_MANS = \
+@MANPAGE_TRUE@	docs/buxton.7 \
+@MANPAGE_TRUE@	docs/buxtonctl.1 \
+@MANPAGE_TRUE@	docs/buxton-api.7 \
+@MANPAGE_TRUE@	docs/buxton.conf.5 \
+@MANPAGE_TRUE@	docs/buxtond.8 \
+@MANPAGE_TRUE@	docs/buxton-protocol.7 \
+@MANPAGE_TRUE@	docs/buxton-security.7 \
+@MANPAGE_TRUE@	docs/buxton_client_handle_response.3 \
+@MANPAGE_TRUE@	docs/buxton_close.3 \
+@MANPAGE_TRUE@	docs/buxton_create_group.3 \
+@MANPAGE_TRUE@	docs/buxton_get_value.3 \
+@MANPAGE_TRUE@	docs/buxton_key_create.3 \
+@MANPAGE_TRUE@	docs/buxton_key_free.3 \
+@MANPAGE_TRUE@	docs/buxton_key_get_group.3 \
+@MANPAGE_TRUE@	docs/buxton_key_get_layer.3 \
+@MANPAGE_TRUE@	docs/buxton_key_get_name.3 \
+@MANPAGE_TRUE@	docs/buxton_key_get_type.3 \
+@MANPAGE_TRUE@	docs/buxton_open.3 \
+@MANPAGE_TRUE@	docs/buxton_register_notification.3 \
+@MANPAGE_TRUE@	docs/buxton_remove_group.3 \
+@MANPAGE_TRUE@	docs/buxton_response_key.3 \
+@MANPAGE_TRUE@	docs/buxton_response_status.3 \
+@MANPAGE_TRUE@	docs/buxton_response_type.3 \
+@MANPAGE_TRUE@	docs/buxton_response_value.3 \
+@MANPAGE_TRUE@	docs/buxton_set_conf_file.3 \
+@MANPAGE_TRUE@	docs/buxton_set_label.3 \
+@MANPAGE_TRUE@	docs/buxton_set_value.3 \
+@MANPAGE_TRUE@	docs/buxton_unregister_notification.3 \
+@MANPAGE_TRUE@	docs/buxton_unset_value.3
 
 
 # set flags
 EXTRA_DIST = \
 	Doxyfile \
 	LICENSE.LGPL2.1 \
+	HACKING \
 	check_db_clean \
 	data/libbuxton.pc.in \
 	docs/LICENSE.MIT \
