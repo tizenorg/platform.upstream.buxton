@@ -1,6 +1,6 @@
 Name:           buxton
-Version:        3
-Release:        0
+Version:        2
+Release:        3
 License:        LGPL-2.1+
 Summary:        A security-enabled configuration system
 Url:            https://github.com/sofar/buxton
