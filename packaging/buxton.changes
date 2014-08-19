@@ -1,3 +1,6 @@
+* Tue Aug 19 2014 Brad Peters <brad.t.peters@intel.com> upstream/3-4-g77bc811
+- Update to new upstream 3.0
+
 * Fri May 02 2014 Patrick McCarty <patrick.mccarty@linux.intel.com> upstream/2@b125f1b
 - Update to the v2 release. This is a bug-fix release.
 
