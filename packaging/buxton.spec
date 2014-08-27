@@ -62,6 +62,9 @@ install -m 0644 %{SOURCE1} %{buildroot}%{_sysconfdir}/buxton.conf
 
 %post
 /sbin/ldconfig
+#buxtond runs as user buxton, which much be created
+useradd buxton
+
 buxtonctl create-db base
 buxtonctl create-db isp
 if [ "$1" -eq 1 ] ; then
