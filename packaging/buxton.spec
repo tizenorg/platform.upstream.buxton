@@ -1,5 +1,5 @@
 Name:           buxton
-Version:        3
+Version:        4
 Release:        0
 License:        LGPL-2.1+
 Summary:        A security-enabled configuration system
@@ -46,6 +46,36 @@ client requests and enforcing MAC. Also, a CLI (buxtonctl) is
 provided for interactive use and for use in shell scripts.
 
 This package provides development files for Buxton.
+
+%package -n buxtonsimple
+Summary: Simplified buxton API
+Requires: %{name} = %{version}
+
+%description -n buxtonsimple
+Buxton is a security-enabled configuration management system. It
+features a layered approach to configuration storage, with each
+layer containing an arbitrary number of groups, each of which may
+contain key-value pairs.  Mandatory Access Control (MAC) is
+implemented at the group level and at the key-value level.
+
+Buxton-simple provides a simplified C library (libbuxtonsimple)
+for simple client applications.
+
+%package -n buxtonsimple-devel
+Summary: Simplified buxton API - development files
+Requires: %{name} = %{version}
+
+%description -n buxtonsimple-devel
+Buxton is a security-enabled configuration management system. It
+features a layered approach to configuration storage, with each
+layer containing an arbitrary number of groups, each of which may
+contain key-value pairs.  Mandatory Access Control (MAC) is
+implemented at the group level and at the key-value level.
+
+Buxton-simple provides a simplified C library (libbuxtonsimple)
+for simple client applications.
+
+This package provides development files for BuxtonSimple.
 
 %prep
 %setup -q
@@ -97,4 +127,17 @@ fi
 %manifest %{name}.manifest
 %{_includedir}/buxton.h
 %{_libdir}/libbuxton.so
-%{_libdir}/pkgconfig/*.pc
+%{_libdir}/pkgconfig/libbuxton.pc
+
+
+%files -n buxtonsimple
+%manifest %{name}.manifest
+#%license LICENSE.LGPL2.1
+%{_libdir}/libbuxtonsimple.so.*
+
+%files -n buxtonsimple-devel
+%manifest %{name}.manifest
+%{_includedir}/buxtonsimple.h
+%{_libdir}/libbuxtonsimple.so
+%{_libdir}/pkgconfig/libbuxtonsimple.pc
+
