@@ -285,7 +285,7 @@ void handle_callback_response(BuxtonControlMessage msg, uint32_t msgid,
 	}
 
 	if (nv->type == BUXTON_CONTROL_NOTIFY) {
-		if (list[0].type == INT32 &&
+		if (list[0].type == BUXTON_TYPE_INT32 &&
 		    list[0].store.d_int32 == 0) {
 #if UINTPTR_MAX == 0xffffffffffffffff
 			if (hashmap_put(notify_callbacks, (void *)((uint64_t)msgid), nv)
@@ -297,7 +297,7 @@ void handle_callback_response(BuxtonControlMessage msg, uint32_t msgid,
 			}
 		}
 	} else if (nv->type == BUXTON_CONTROL_UNNOTIFY) {
-		if (list[0].type == INT32 &&
+		if (list[0].type == BUXTON_TYPE_INT32 &&
 		    list[0].store.d_int32 == 0) {
 			(void)hashmap_remove(notify_callbacks,
 #if UINTPTR_MAX == 0xffffffffffffffff
@@ -374,7 +374,7 @@ ssize_t buxton_wire_handle_response(_BuxtonClient *client)
 			goto next;
 		}
 
-		if (!(r_msg == BUXTON_CONTROL_STATUS && r_list && r_list[0].type == INT32)
+		if (!(r_msg == BUXTON_CONTROL_STATUS && r_list && r_list[0].type == BUXTON_TYPE_INT32)
 		    && !(r_msg == BUXTON_CONTROL_CHANGED)) {
 			handled++;
 			buxton_log("Critical error: Invalid response\n");
@@ -394,7 +394,7 @@ ssize_t buxton_wire_handle_response(_BuxtonClient *client)
 	next:
 		if (r_list) {
 			for (int i = 0; i < count; i++) {
-				if (r_list[i].type == STRING) {
+				if (r_list[i].type == BUXTON_TYPE_STRING) {
 					free(r_list[i].store.d_string.value);
 				}
 			}
@@ -429,8 +429,9 @@ int buxton_wire_get_response(_BuxtonClient *client)
 	return (int)processed;
 }
 
-bool buxton_wire_set_value(_BuxtonClient *client, _BuxtonKey *key, void *value,
-			   BuxtonCallback callback, void *data)
+bool buxton_wire_set_value(_BuxtonClient *client, _BuxtonKey *key,
+			   const void *value, BuxtonCallback callback,
+			   void *data)
 {
 	_cleanup_free_ uint8_t *send = NULL;
 	bool ret = false;
@@ -447,30 +448,31 @@ bool buxton_wire_set_value(_BuxtonClient *client, _BuxtonKey *key, void *value,
 	buxton_string_to_data(&key->name, &d_name);
 	d_value.type = key->type;
 	switch (key->type) {
-	case STRING:
+	case BUXTON_TYPE_STRING:
+		/* cast until BuxtonString is updated */
 		d_value.store.d_string.value = (char *)value;
 		d_value.store.d_string.length = (uint32_t)strlen((char *)value) + 1;
 		break;
-	case INT32:
-		d_value.store.d_int32 = *(int32_t *)value;
+	case BUXTON_TYPE_INT32:
+		d_value.store.d_int32 = *(const int32_t *)value;
 		break;
-	case INT64:
-		d_value.store.d_int64 = *(int64_t *)value;
+	case BUXTON_TYPE_INT64:
+		d_value.store.d_int64 = *(const int64_t *)value;
 		break;
-	case UINT32:
-		d_value.store.d_uint32 = *(uint32_t *)value;
+	case BUXTON_TYPE_UINT32:
+		d_value.store.d_uint32 = *(const uint32_t *)value;
 		break;
-	case UINT64:
-		d_value.store.d_uint64 = *(uint64_t *)value;
+	case BUXTON_TYPE_UINT64:
+		d_value.store.d_uint64 = *(const uint64_t *)value;
 		break;
-	case FLOAT:
-		d_value.store.d_float = *(float *)value;
+	case BUXTON_TYPE_FLOAT:
+		d_value.store.d_float = *(const float *)value;
 		break;
-	case DOUBLE:
+	case BUXTON_TYPE_DOUBLE:
 		memcpy(&d_value.store.d_double, value, sizeof(double));
 		break;
-	case BOOLEAN:
-		d_value.store.d_boolean = *(bool *)value;
+	case BUXTON_TYPE_BOOLEAN:
+		d_value.store.d_boolean = *(const bool *)value;
 		break;
 	default:
 		break;
@@ -679,7 +681,7 @@ bool buxton_wire_get_value(_BuxtonClient *client, _BuxtonKey *key,
 
 	buxton_string_to_data(&key->group, &d_group);
 	buxton_string_to_data(&key->name, &d_name);
-	d_type.type = UINT32;
+	d_type.type = BUXTON_TYPE_UINT32;
 	d_type.store.d_int32 = key->type;
 
 	list = buxton_array_new();
@@ -691,15 +693,15 @@ bool buxton_wire_get_value(_BuxtonClient *client, _BuxtonKey *key,
 		}
 	}
 	if (!buxton_array_add(list, &d_group)) {
-		buxton_log("Failed to add group to set_value array\n");
+		buxton_log("Failed to add group to get_value array\n");
 		goto end;
 	}
 	if (!buxton_array_add(list, &d_name)) {
-		buxton_log("Failed to add name to set_value array\n");
+		buxton_log("Failed to add name to get_value array\n");
 		goto end;
 	}
 	if (!buxton_array_add(list, &d_type)) {
-		buxton_log("Failed to add type to set_value array\n");
+		buxton_log("Failed to add type to get_value array\n");
 		goto end;
 	}
 
@@ -711,6 +713,59 @@ bool buxton_wire_get_value(_BuxtonClient *client, _BuxtonKey *key,
 
 	if (!send_message(client, send, send_len, callback, data, msgid,
 			  BUXTON_CONTROL_GET, key)) {
+		goto end;
+	}
+
+	ret = true;
+
+end:
+	buxton_array_free(&list, NULL);
+	return ret;
+}
+
+bool buxton_wire_get_label(_BuxtonClient *client, _BuxtonKey *key,
+			   BuxtonCallback callback, void *data)
+{
+	assert(client);
+	assert(key);
+
+	_cleanup_free_ uint8_t *send = NULL;
+	bool ret = false;
+	size_t send_len = 0;
+	BuxtonArray *list = NULL;
+	BuxtonData d_layer;
+	BuxtonData d_group;
+	BuxtonData d_name;
+	uint32_t msgid = get_msgid();
+
+	buxton_string_to_data(&key->layer, &d_layer);
+	buxton_string_to_data(&key->group, &d_group);
+
+	list = buxton_array_new();
+	if (!buxton_array_add(list, &d_layer)) {
+		buxton_log("Failed to add layer to get_label array\n");
+		goto end;
+	}
+	if (!buxton_array_add(list, &d_group)) {
+		buxton_log("Failed to add group to get_label array\n");
+		goto end;
+	}
+	if (key->name.value) {
+		buxton_string_to_data(&key->name, &d_name);
+		if (!buxton_array_add(list, &d_name)) {
+			buxton_log("Failed to add name to get_label array\n");
+			goto end;
+		}
+	}
+
+	send_len = buxton_serialize_message(&send, BUXTON_CONTROL_GET_LABEL, msgid, list);
+
+	if (send_len == 0) {
+		goto end;
+	}
+
+	if (!send_message(client, send, send_len, callback, data, msgid,
+			  BUXTON_CONTROL_GET_LABEL, key)) {
 		goto end;
 	}
 
@@ -742,7 +797,7 @@ bool buxton_wire_unset_value(_BuxtonClient *client,
 	buxton_string_to_data(&key->group, &d_group);
 	buxton_string_to_data(&key->name, &d_name);
 	buxton_string_to_data(&key->layer, &d_layer);
-	d_type.type = UINT32;
+	d_type.type = BUXTON_TYPE_UINT32;
 	d_type.store.d_int32 = key->type;
 
 	list = buxton_array_new();
@@ -844,7 +899,7 @@ bool buxton_wire_register_notification(_BuxtonClient *client,
 
 	buxton_string_to_data(&key->group, &d_group);
 	buxton_string_to_data(&key->name, &d_name);
-	d_type.type = UINT32;
+	d_type.type = BUXTON_TYPE_UINT32;
 	d_type.store.d_int32 = key->type;
 
 	list = buxton_array_new();
@@ -899,7 +954,7 @@ bool buxton_wire_unregister_notification(_BuxtonClient *client,
 
 	buxton_string_to_data(&key->group, &d_group);
 	buxton_string_to_data(&key->name, &d_name);
-	d_type.type = UINT32;
+	d_type.type = BUXTON_TYPE_UINT32;
 	d_type.store.d_int32 = key->type;
 
 	list = buxton_array_new();

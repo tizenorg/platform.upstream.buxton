@@ -35,13 +35,16 @@
 void get_cb(BuxtonResponse response, void *data)
 {
 	int32_t* ret = (int32_t*)data;
+	void *vret = NULL;
 
 	if (buxton_response_status(response) != 0) {
 		printf("Failed to get value\n");
 		return;
 	}
 
-	*ret = *(int32_t*)buxton_response_value(response);
+	vret = buxton_response_value(response);
+	*ret = *(int32_t*)vret;
+	free(vret);
 }
 
 int main(void)
@@ -62,7 +65,7 @@ int main(void)
  * A fully qualified key-name is being created since both group and key-name are not null.
  * Group: "hello", Key-name: "test", Layer: "user", DataType: INT
  */
-	key = buxton_key_create("hello", "test", "user", INT32);
+	key = buxton_key_create("hello", "test", "user", BUXTON_TYPE_INT32);
 	if (!key) {
 		return -1;
 	}

@@ -8,6 +8,7 @@ BUXTON_1 {
 		buxton_create_group;
 		buxton_remove_group;
 		buxton_get_value;
+		buxton_get_label;
 		buxton_unset_value;
 		buxton_register_notification;
 		buxton_unregister_notification;
@@ -22,6 +23,7 @@ BUXTON_1 {
 		buxton_response_type;
 		buxton_response_key;
 		buxton_response_value;
+		buxton_response_value_type;
 	local:
 		*;
 };

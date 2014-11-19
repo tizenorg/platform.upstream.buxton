@@ -83,9 +83,11 @@ build_triplet = @build@
 host_triplet = @host@
 @DEBUG_TRUE@am__append_1 = -ggdb3 -O0
 @COVERAGE_TRUE@am__append_2 = --coverage
-TESTS = check_db_clean check_buxton$(EXEEXT) check_shared_lib$(EXEEXT) \
-	check_daemon$(EXEEXT) check_smack$(EXEEXT) \
-	check_configurator$(EXEEXT)
+TESTS = check_db_clean check_buxton$(EXEEXT) check_buxton_api$(EXEEXT) \
+	check_buxton_array$(EXEEXT) check_buxton_list$(EXEEXT) \
+	check_shared_lib$(EXEEXT) check_daemon$(EXEEXT) \
+	check_smack$(EXEEXT) check_configurator$(EXEEXT) \
+	check_buxtonsimple$(EXEEXT)
 sbin_PROGRAMS = buxtond$(EXEEXT)
 bin_PROGRAMS = buxtonctl$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2)
 @USE_LOCAL_INIPARSER_TRUE@am__append_3 = \
@@ -94,9 +96,11 @@ bin_PROGRAMS = buxtonctl$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2)
 @USE_LOCAL_INIPARSER_TRUE@	src/shared/iniparser.c \
 @USE_LOCAL_INIPARSER_TRUE@	src/shared/iniparser.h
 
-check_PROGRAMS = check_buxton$(EXEEXT) check_shared_lib$(EXEEXT) \
-	check_buxtond$(EXEEXT) check_daemon$(EXEEXT) \
-	check_smack$(EXEEXT) check_configurator$(EXEEXT)
+check_PROGRAMS = check_buxton$(EXEEXT) check_buxton_api$(EXEEXT) \
+	check_buxton_array$(EXEEXT) check_buxton_list$(EXEEXT) \
+	check_shared_lib$(EXEEXT) check_buxtond$(EXEEXT) \
+	check_daemon$(EXEEXT) check_smack$(EXEEXT) \
+	check_configurator$(EXEEXT) check_buxtonsimple$(EXEEXT)
 @BUILD_DEMOS_TRUE@am__append_4 = \
 @BUILD_DEMOS_TRUE@	bxt_timing \
 @BUILD_DEMOS_TRUE@	bxt_hello_get \
@@ -106,7 +110,8 @@ check_PROGRAMS = check_buxton$(EXEEXT) check_shared_lib$(EXEEXT) \
 @BUILD_DEMOS_TRUE@	bxt_hello_remove_group \
 @BUILD_DEMOS_TRUE@	bxt_hello_unset \
 @BUILD_DEMOS_TRUE@	bxt_hello_notify \
-@BUILD_DEMOS_TRUE@	bxt_hello_notify_multi
+@BUILD_DEMOS_TRUE@	bxt_hello_notify_multi \
+@BUILD_DEMOS_TRUE@	bxt_hello_simple
 
 @BUILD_DEMOS_TRUE@@BUILD_GTK_DEMO_TRUE@am__append_5 = \
 @BUILD_DEMOS_TRUE@@BUILD_GTK_DEMO_TRUE@	bxt_gtk_client
@@ -117,6 +122,7 @@ DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(srcdir)/config.h.in $(top_srcdir)/data/buxton.service.in \
 	$(top_srcdir)/data/buxton.socket.in \
 	$(top_srcdir)/data/libbuxton.pc.in \
+	$(top_srcdir)/data/libbuxtonsimple.pc.in \
 	$(top_srcdir)/test/test-pass.ini.in \
 	$(top_srcdir)/test/test-fail.ini.in \
 	$(top_srcdir)/test/test.conf.in depcomp $(dist_man_MANS) \
@@ -135,8 +141,8 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = data/buxton.service data/buxton.socket \
-	data/libbuxton.pc test/test-pass.ini test/test-fail.ini \
-	test/test.conf
+	data/libbuxton.pc data/libbuxtonsimple.pc test/test-pass.ini \
+	test/test-fail.ini test/test.conf
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -220,6 +226,24 @@ libbuxton_la_OBJECTS = $(am_libbuxton_la_OBJECTS)
 libbuxton_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libbuxton_la_CFLAGS) \
 	$(CFLAGS) $(libbuxton_la_LDFLAGS) $(LDFLAGS) -o $@
+libbuxtonsimple_shared_la_LIBADD =
+am_libbuxtonsimple_shared_la_OBJECTS =  \
+	src/shared/buxtonsimple-internals.lo
+libbuxtonsimple_shared_la_OBJECTS =  \
+	$(am_libbuxtonsimple_shared_la_OBJECTS)
+libbuxtonsimple_shared_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(AM_CFLAGS) $(CFLAGS) $(libbuxtonsimple_shared_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
+libbuxtonsimple_la_DEPENDENCIES = libbuxton.la libbuxton-shared.la \
+	libbuxtonsimple-shared.la
+am_libbuxtonsimple_la_OBJECTS =  \
+	src/libbuxtonsimple/libbuxtonsimple_la-lbuxtonsimple.lo
+libbuxtonsimple_la_OBJECTS = $(am_libbuxtonsimple_la_OBJECTS)
+libbuxtonsimple_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libbuxtonsimple_la_CFLAGS) $(CFLAGS) \
+	$(libbuxtonsimple_la_LDFLAGS) $(LDFLAGS) -o $@
 memory_la_LIBADD =
 am_memory_la_OBJECTS = src/db/memory.lo
 memory_la_OBJECTS = $(am_memory_la_OBJECTS)
@@ -234,7 +258,8 @@ memory_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 @BUILD_DEMOS_TRUE@	bxt_hello_remove_group$(EXEEXT) \
 @BUILD_DEMOS_TRUE@	bxt_hello_unset$(EXEEXT) \
 @BUILD_DEMOS_TRUE@	bxt_hello_notify$(EXEEXT) \
-@BUILD_DEMOS_TRUE@	bxt_hello_notify_multi$(EXEEXT)
+@BUILD_DEMOS_TRUE@	bxt_hello_notify_multi$(EXEEXT) \
+@BUILD_DEMOS_TRUE@	bxt_hello_simple$(EXEEXT)
 @BUILD_DEMOS_TRUE@@BUILD_GTK_DEMO_TRUE@am__EXEEXT_2 = bxt_gtk_client$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS) $(sbin_PROGRAMS)
 am_buxtonctl_OBJECTS = src/cli/buxtonctl-main.$(OBJEXT) \
@@ -320,6 +345,15 @@ bxt_hello_set_label_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(bxt_hello_set_label_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
+am__bxt_hello_simple_SOURCES_DIST = demo/hellosimple.c
+@BUILD_DEMOS_TRUE@am_bxt_hello_simple_OBJECTS =  \
+@BUILD_DEMOS_TRUE@	demo/bxt_hello_simple-hellosimple.$(OBJEXT)
+bxt_hello_simple_OBJECTS = $(am_bxt_hello_simple_OBJECTS)
+@BUILD_DEMOS_TRUE@bxt_hello_simple_DEPENDENCIES = libbuxtonsimple.la
+bxt_hello_simple_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(bxt_hello_simple_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
 am__bxt_hello_unset_SOURCES_DIST = demo/hellounset.c
 @BUILD_DEMOS_TRUE@am_bxt_hello_unset_OBJECTS =  \
 @BUILD_DEMOS_TRUE@	demo/bxt_hello_unset-hellounset.$(OBJEXT)
@@ -341,6 +375,33 @@ check_buxton_DEPENDENCIES = libbuxton.la libbuxton-shared.la
 check_buxton_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(check_buxton_CFLAGS) \
 	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+am_check_buxton_api_OBJECTS =  \
+	test/check_buxton_api-check_utils.$(OBJEXT) \
+	test/check_buxton_api-check_buxton_api.$(OBJEXT)
+check_buxton_api_OBJECTS = $(am_check_buxton_api_OBJECTS)
+check_buxton_api_DEPENDENCIES = libbuxton-shared.la
+check_buxton_api_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(check_buxton_api_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
+am_check_buxton_array_OBJECTS =  \
+	test/check_buxton_array-check_utils.$(OBJEXT) \
+	test/check_buxton_array-check_buxton_array.$(OBJEXT)
+check_buxton_array_OBJECTS = $(am_check_buxton_array_OBJECTS)
+check_buxton_array_DEPENDENCIES = libbuxton-shared.la
+check_buxton_array_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(check_buxton_array_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
+am_check_buxton_list_OBJECTS =  \
+	test/check_buxton_list-check_utils.$(OBJEXT) \
+	test/check_buxton_list-check_buxton_list.$(OBJEXT)
+check_buxton_list_OBJECTS = $(am_check_buxton_list_OBJECTS)
+check_buxton_list_DEPENDENCIES =
+check_buxton_list_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(check_buxton_list_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
 am_check_buxtond_OBJECTS = test/check_buxtond-check_utils.$(OBJEXT) \
 	src/core/check_buxtond-daemon.$(OBJEXT) \
 	src/core/check_buxtond-main.$(OBJEXT)
@@ -350,6 +411,16 @@ check_buxtond_DEPENDENCIES = $(am__DEPENDENCIES_1) libbuxton.la \
 check_buxtond_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(check_buxtond_CFLAGS) \
 	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+am_check_buxtonsimple_OBJECTS =  \
+	test/check_buxtonsimple-check_buxtonsimple.$(OBJEXT) \
+	src/core/check_buxtonsimple-daemon.$(OBJEXT)
+check_buxtonsimple_OBJECTS = $(am_check_buxtonsimple_OBJECTS)
+check_buxtonsimple_DEPENDENCIES = libbuxtonsimple.la \
+	libbuxtonsimple-shared.la libbuxton.la libbuxton-shared.la
+check_buxtonsimple_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(check_buxtonsimple_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_check_configurator_OBJECTS =  \
 	src/shared/check_configurator-configurator.$(OBJEXT) \
 	test/check_configurator-check_configurator.$(OBJEXT)
@@ -418,20 +489,24 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(gdbm_la_SOURCES) $(libbuxton_shared_la_SOURCES) \
-	$(libbuxton_la_SOURCES) $(memory_la_SOURCES) \
+	$(libbuxton_la_SOURCES) $(libbuxtonsimple_shared_la_SOURCES) \
+	$(libbuxtonsimple_la_SOURCES) $(memory_la_SOURCES) \
 	$(buxtonctl_SOURCES) $(buxtond_SOURCES) \
 	$(bxt_gtk_client_SOURCES) $(bxt_hello_create_group_SOURCES) \
 	$(bxt_hello_get_SOURCES) $(bxt_hello_notify_SOURCES) \
 	$(bxt_hello_notify_multi_SOURCES) \
 	$(bxt_hello_remove_group_SOURCES) $(bxt_hello_set_SOURCES) \
-	$(bxt_hello_set_label_SOURCES) $(bxt_hello_unset_SOURCES) \
-	$(bxt_timing_SOURCES) $(check_buxton_SOURCES) \
-	$(check_buxtond_SOURCES) $(check_configurator_SOURCES) \
-	$(check_daemon_SOURCES) $(check_shared_lib_SOURCES) \
-	$(check_smack_SOURCES)
+	$(bxt_hello_set_label_SOURCES) $(bxt_hello_simple_SOURCES) \
+	$(bxt_hello_unset_SOURCES) $(bxt_timing_SOURCES) \
+	$(check_buxton_SOURCES) $(check_buxton_api_SOURCES) \
+	$(check_buxton_array_SOURCES) $(check_buxton_list_SOURCES) \
+	$(check_buxtond_SOURCES) $(check_buxtonsimple_SOURCES) \
+	$(check_configurator_SOURCES) $(check_daemon_SOURCES) \
+	$(check_shared_lib_SOURCES) $(check_smack_SOURCES)
 DIST_SOURCES = $(gdbm_la_SOURCES) \
 	$(am__libbuxton_shared_la_SOURCES_DIST) \
-	$(libbuxton_la_SOURCES) $(memory_la_SOURCES) \
+	$(libbuxton_la_SOURCES) $(libbuxtonsimple_shared_la_SOURCES) \
+	$(libbuxtonsimple_la_SOURCES) $(memory_la_SOURCES) \
 	$(buxtonctl_SOURCES) $(buxtond_SOURCES) \
 	$(am__bxt_gtk_client_SOURCES_DIST) \
 	$(am__bxt_hello_create_group_SOURCES_DIST) \
@@ -441,9 +516,12 @@ DIST_SOURCES = $(gdbm_la_SOURCES) \
 	$(am__bxt_hello_remove_group_SOURCES_DIST) \
 	$(am__bxt_hello_set_SOURCES_DIST) \
 	$(am__bxt_hello_set_label_SOURCES_DIST) \
+	$(am__bxt_hello_simple_SOURCES_DIST) \
 	$(am__bxt_hello_unset_SOURCES_DIST) \
 	$(am__bxt_timing_SOURCES_DIST) $(check_buxton_SOURCES) \
-	$(check_buxtond_SOURCES) $(check_configurator_SOURCES) \
+	$(check_buxton_api_SOURCES) $(check_buxton_array_SOURCES) \
+	$(check_buxton_list_SOURCES) $(check_buxtond_SOURCES) \
+	$(check_buxtonsimple_SOURCES) $(check_configurator_SOURCES) \
 	$(check_daemon_SOURCES) $(check_shared_lib_SOURCES) \
 	$(check_smack_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
@@ -876,9 +954,9 @@ AM_LDFLAGS = \
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 AUTOMAKE_OPTIONS = color-tests parallel-tests
 SUBDIRS = .
-noinst_LTLIBRARIES = libbuxton-shared.la
-include_HEADERS = src/include/buxton.h
-lib_LTLIBRARIES = libbuxton.la
+noinst_LTLIBRARIES = libbuxton-shared.la libbuxtonsimple-shared.la
+include_HEADERS = src/include/buxton.h src/include/buxtonsimple.h
+lib_LTLIBRARIES = libbuxton.la libbuxtonsimple.la
 pkglib_LTLIBRARIES = gdbm.la memory.la
 DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir) --enable-debug
@@ -892,7 +970,8 @@ LIBBUXTON_REVISION = 0
 LIBBUXTON_AGE = 0
 pkgconfiglibdir = $(libdir)/pkgconfig
 pkgconfiglib_DATA = \
-	data/libbuxton.pc
+	data/libbuxton.pc \
+	data/libbuxtonsimple.pc
 
 @MANPAGE_TRUE@dist_man_MANS = \
 @MANPAGE_TRUE@	docs/buxton.7 \
@@ -923,7 +1002,26 @@ pkgconfiglib_DATA = \
 @MANPAGE_TRUE@	docs/buxton_set_label.3 \
 @MANPAGE_TRUE@	docs/buxton_set_value.3 \
 @MANPAGE_TRUE@	docs/buxton_unregister_notification.3 \
-@MANPAGE_TRUE@	docs/buxton_unset_value.3
+@MANPAGE_TRUE@	docs/buxton_unset_value.3 \
+@MANPAGE_TRUE@	docs/buxtonsimple-api.7 \
+@MANPAGE_TRUE@	docs/sbuxton_get_int32.3 \
+@MANPAGE_TRUE@	docs/sbuxton_get_uint32.3 \
+@MANPAGE_TRUE@	docs/sbuxton_get_string.3 \
+@MANPAGE_TRUE@	docs/sbuxton_get_int64.3 \
+@MANPAGE_TRUE@	docs/sbuxton_get_uint64.3 \
+@MANPAGE_TRUE@	docs/sbuxton_get_float.3 \
+@MANPAGE_TRUE@	docs/sbuxton_get_double.3 \
+@MANPAGE_TRUE@	docs/sbuxton_get_bool.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_int32.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_uint32.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_string.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_int64.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_uint64.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_float.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_double.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_bool.3 \
+@MANPAGE_TRUE@	docs/sbuxton_set_group.3 \
+@MANPAGE_TRUE@	docs/sbuxton_remove_group.3 
 
 
 # set flags
@@ -933,8 +1031,10 @@ EXTRA_DIST = \
 	HACKING \
 	check_db_clean \
 	data/libbuxton.pc.in \
+	data/libbuxtonsimple.pc.in \
 	docs/LICENSE.MIT \
 	src/libbuxton/lbuxton.sym \
+	src/libbuxtonsimple/lbuxtonsimple.sym \
 	test/test.load2 \
 	test/test.conf \
 	test/test-configurator.conf
@@ -983,6 +1083,14 @@ libbuxton_shared_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
 	-static
 
+libbuxtonsimple_shared_la_SOURCES = \
+	src/shared/buxtonsimple-internals.h \
+	src/shared/buxtonsimple-internals.c
+
+libbuxtonsimple_shared_la_LDFLAGS = \
+	$(AM_LDFLAGS) \
+	-static
+
 libbuxton_la_SOURCES = \
 	src/libbuxton/lbuxton.c
 
@@ -1000,6 +1108,23 @@ libbuxton_la_LDFLAGS = \
 libbuxton_la_LIBADD = \
 	libbuxton-shared.la \
 	-ldl
+
+libbuxtonsimple_la_SOURCES = \
+	src/libbuxtonsimple/lbuxtonsimple.c
+
+libbuxtonsimple_la_CFLAGS = \
+	$(AM_CFLAGS) \
+	-fvisibility=hidden
+
+libbuxtonsimple_la_LDFLAGS = \
+	-version-info 1:0:1 \
+	-version-info $(LIBBUXTON_CURRENT):$(LIBBUXTON_REVISION):$(LIBBUXTON_AGE) \
+	-Wl,--version-script=$(top_srcdir)/src/libbuxtonsimple/lbuxtonsimple.sym
+
+libbuxtonsimple_la_LIBADD = \
+	libbuxton.la \
+	libbuxton-shared.la \
+	libbuxtonsimple-shared.la 
 
 gdbm_la_SOURCES = \
 	src/db/gdbm.c
@@ -1038,6 +1163,53 @@ check_buxton_LDADD = \
 	@CHECK_LIBS@ \
 	libbuxton.la \
 	libbuxton-shared.la
+
+check_buxton_api_SOURCES = \
+	test/check_utils.c \
+	test/check_utils.h \
+        test/check_buxton_api.c
+
+check_buxton_api_CFLAGS = \
+	$(AM_CFLAGS) \
+	@CHECK_CFLAGS@ \
+	-DMAKE_CHECK \
+	-DABS_TOP_SRCDIR=\"$(abs_top_srcdir)\" \
+	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
+
+check_buxton_api_LDADD = \
+	@CHECK_LIBS@ \
+	libbuxton-shared.la
+
+check_buxton_array_SOURCES = \
+	test/check_utils.c \
+	test/check_utils.h \
+        test/check_buxton_array.c
+
+check_buxton_array_CFLAGS = \
+	$(AM_CFLAGS) \
+	@CHECK_CFLAGS@ \
+	-DMAKE_CHECK \
+	-DABS_TOP_SRCDIR=\"$(abs_top_srcdir)\" \
+	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
+
+check_buxton_array_LDADD = \
+	@CHECK_LIBS@ \
+	libbuxton-shared.la
+
+check_buxton_list_SOURCES = \
+	test/check_utils.c \
+	test/check_utils.h \
+        test/check_buxton_list.c
+
+check_buxton_list_CFLAGS = \
+	$(AM_CFLAGS) \
+	@CHECK_CFLAGS@ \
+	-DMAKE_CHECK \
+	-DABS_TOP_SRCDIR=\"$(abs_top_srcdir)\" \
+	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
+
+check_buxton_list_LDADD = \
+	@CHECK_LIBS@
 
 check_shared_lib_SOURCES = \
 	test/check_utils.c \
@@ -1137,6 +1309,25 @@ check_configurator_LDADD = \
 	@INIPARSER_LIBS@ \
 	libbuxton-shared.la
 
+check_buxtonsimple_SOURCES = \
+	test/check_buxtonsimple.c \
+	src/core/daemon.c \
+	src/core/daemon.h
+
+check_buxtonsimple_CFLAGS = \
+	$(AM_CFLAGS) \
+	@CHECK_CFLAGS@ \
+	-DMAKE_CHECK \
+	-DABS_TOP_SRCDIR=\"$(abs_top_srcdir)\" \
+	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
+
+check_buxtonsimple_LDADD = \
+	@CHECK_LIBS@ \
+	libbuxtonsimple.la \
+	libbuxtonsimple-shared.la \
+	libbuxton.la \
+	libbuxton-shared.la
+
 check_DATA = \
 	test/test-pass.ini \
 	test/test-fail.ini \
@@ -1226,6 +1417,15 @@ check_DATA = \
 @BUILD_DEMOS_TRUE@bxt_hello_notify_multi_LDADD = \
 @BUILD_DEMOS_TRUE@	libbuxton.la
 
+@BUILD_DEMOS_TRUE@bxt_hello_simple_SOURCES = \
+@BUILD_DEMOS_TRUE@	demo/hellosimple.c
+
+@BUILD_DEMOS_TRUE@bxt_hello_simple_CFLAGS = \
+@BUILD_DEMOS_TRUE@	$(AM_CFLAGS)
+
+@BUILD_DEMOS_TRUE@bxt_hello_simple_LDADD = \
+@BUILD_DEMOS_TRUE@	libbuxtonsimple.la
+
 # GTK3 client demo
 @BUILD_DEMOS_TRUE@@BUILD_GTK_DEMO_TRUE@bxt_gtk_client_SOURCES = \
 @BUILD_DEMOS_TRUE@@BUILD_GTK_DEMO_TRUE@	demo/gtk_client.c \
@@ -1299,6 +1499,8 @@ data/buxton.service: $(top_builddir)/config.status $(top_srcdir)/data/buxton.ser
 data/buxton.socket: $(top_builddir)/config.status $(top_srcdir)/data/buxton.socket.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 data/libbuxton.pc: $(top_builddir)/config.status $(top_srcdir)/data/libbuxton.pc.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+data/libbuxtonsimple.pc: $(top_builddir)/config.status $(top_srcdir)/data/libbuxtonsimple.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 test/test-pass.ini: $(top_builddir)/config.status $(top_srcdir)/test/test-pass.ini.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
@@ -1450,6 +1652,23 @@ src/libbuxton/libbuxton_la-lbuxton.lo: src/libbuxton/$(am__dirstamp) \
 
 libbuxton.la: $(libbuxton_la_OBJECTS) $(libbuxton_la_DEPENDENCIES) $(EXTRA_libbuxton_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libbuxton_la_LINK) -rpath $(libdir) $(libbuxton_la_OBJECTS) $(libbuxton_la_LIBADD) $(LIBS)
+src/shared/buxtonsimple-internals.lo: src/shared/$(am__dirstamp) \
+	src/shared/$(DEPDIR)/$(am__dirstamp)
+
+libbuxtonsimple-shared.la: $(libbuxtonsimple_shared_la_OBJECTS) $(libbuxtonsimple_shared_la_DEPENDENCIES) $(EXTRA_libbuxtonsimple_shared_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libbuxtonsimple_shared_la_LINK)  $(libbuxtonsimple_shared_la_OBJECTS) $(libbuxtonsimple_shared_la_LIBADD) $(LIBS)
+src/libbuxtonsimple/$(am__dirstamp):
+	@$(MKDIR_P) src/libbuxtonsimple
+	@: > src/libbuxtonsimple/$(am__dirstamp)
+src/libbuxtonsimple/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) src/libbuxtonsimple/$(DEPDIR)
+	@: > src/libbuxtonsimple/$(DEPDIR)/$(am__dirstamp)
+src/libbuxtonsimple/libbuxtonsimple_la-lbuxtonsimple.lo:  \
+	src/libbuxtonsimple/$(am__dirstamp) \
+	src/libbuxtonsimple/$(DEPDIR)/$(am__dirstamp)
+
+libbuxtonsimple.la: $(libbuxtonsimple_la_OBJECTS) $(libbuxtonsimple_la_DEPENDENCIES) $(EXTRA_libbuxtonsimple_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libbuxtonsimple_la_LINK) -rpath $(libdir) $(libbuxtonsimple_la_OBJECTS) $(libbuxtonsimple_la_LIBADD) $(LIBS)
 src/db/memory.lo: src/db/$(am__dirstamp) \
 	src/db/$(DEPDIR)/$(am__dirstamp)
 
@@ -1644,6 +1863,12 @@ demo/bxt_hello_set_label-hellosetlabel.$(OBJEXT):  \
 bxt_hello_set_label$(EXEEXT): $(bxt_hello_set_label_OBJECTS) $(bxt_hello_set_label_DEPENDENCIES) $(EXTRA_bxt_hello_set_label_DEPENDENCIES) 
 	@rm -f bxt_hello_set_label$(EXEEXT)
 	$(AM_V_CCLD)$(bxt_hello_set_label_LINK) $(bxt_hello_set_label_OBJECTS) $(bxt_hello_set_label_LDADD) $(LIBS)
+demo/bxt_hello_simple-hellosimple.$(OBJEXT): demo/$(am__dirstamp) \
+	demo/$(DEPDIR)/$(am__dirstamp)
+
+bxt_hello_simple$(EXEEXT): $(bxt_hello_simple_OBJECTS) $(bxt_hello_simple_DEPENDENCIES) $(EXTRA_bxt_hello_simple_DEPENDENCIES) 
+	@rm -f bxt_hello_simple$(EXEEXT)
+	$(AM_V_CCLD)$(bxt_hello_simple_LINK) $(bxt_hello_simple_OBJECTS) $(bxt_hello_simple_LDADD) $(LIBS)
 demo/bxt_hello_unset-hellounset.$(OBJEXT): demo/$(am__dirstamp) \
 	demo/$(DEPDIR)/$(am__dirstamp)
 
@@ -1670,6 +1895,30 @@ test/check_buxton-check_buxton.$(OBJEXT): test/$(am__dirstamp) \
 check_buxton$(EXEEXT): $(check_buxton_OBJECTS) $(check_buxton_DEPENDENCIES) $(EXTRA_check_buxton_DEPENDENCIES) 
 	@rm -f check_buxton$(EXEEXT)
 	$(AM_V_CCLD)$(check_buxton_LINK) $(check_buxton_OBJECTS) $(check_buxton_LDADD) $(LIBS)
+test/check_buxton_api-check_utils.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+test/check_buxton_api-check_buxton_api.$(OBJEXT):  \
+	test/$(am__dirstamp) test/$(DEPDIR)/$(am__dirstamp)
+
+check_buxton_api$(EXEEXT): $(check_buxton_api_OBJECTS) $(check_buxton_api_DEPENDENCIES) $(EXTRA_check_buxton_api_DEPENDENCIES) 
+	@rm -f check_buxton_api$(EXEEXT)
+	$(AM_V_CCLD)$(check_buxton_api_LINK) $(check_buxton_api_OBJECTS) $(check_buxton_api_LDADD) $(LIBS)
+test/check_buxton_array-check_utils.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+test/check_buxton_array-check_buxton_array.$(OBJEXT):  \
+	test/$(am__dirstamp) test/$(DEPDIR)/$(am__dirstamp)
+
+check_buxton_array$(EXEEXT): $(check_buxton_array_OBJECTS) $(check_buxton_array_DEPENDENCIES) $(EXTRA_check_buxton_array_DEPENDENCIES) 
+	@rm -f check_buxton_array$(EXEEXT)
+	$(AM_V_CCLD)$(check_buxton_array_LINK) $(check_buxton_array_OBJECTS) $(check_buxton_array_LDADD) $(LIBS)
+test/check_buxton_list-check_utils.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+test/check_buxton_list-check_buxton_list.$(OBJEXT):  \
+	test/$(am__dirstamp) test/$(DEPDIR)/$(am__dirstamp)
+
+check_buxton_list$(EXEEXT): $(check_buxton_list_OBJECTS) $(check_buxton_list_DEPENDENCIES) $(EXTRA_check_buxton_list_DEPENDENCIES) 
+	@rm -f check_buxton_list$(EXEEXT)
+	$(AM_V_CCLD)$(check_buxton_list_LINK) $(check_buxton_list_OBJECTS) $(check_buxton_list_LDADD) $(LIBS)
 test/check_buxtond-check_utils.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 src/core/check_buxtond-daemon.$(OBJEXT): src/core/$(am__dirstamp) \
@@ -1680,6 +1929,14 @@ src/core/check_buxtond-main.$(OBJEXT): src/core/$(am__dirstamp) \
 check_buxtond$(EXEEXT): $(check_buxtond_OBJECTS) $(check_buxtond_DEPENDENCIES) $(EXTRA_check_buxtond_DEPENDENCIES) 
 	@rm -f check_buxtond$(EXEEXT)
 	$(AM_V_CCLD)$(check_buxtond_LINK) $(check_buxtond_OBJECTS) $(check_buxtond_LDADD) $(LIBS)
+test/check_buxtonsimple-check_buxtonsimple.$(OBJEXT):  \
+	test/$(am__dirstamp) test/$(DEPDIR)/$(am__dirstamp)
+src/core/check_buxtonsimple-daemon.$(OBJEXT):  \
+	src/core/$(am__dirstamp) src/core/$(DEPDIR)/$(am__dirstamp)
+
+check_buxtonsimple$(EXEEXT): $(check_buxtonsimple_OBJECTS) $(check_buxtonsimple_DEPENDENCIES) $(EXTRA_check_buxtonsimple_DEPENDENCIES) 
+	@rm -f check_buxtonsimple$(EXEEXT)
+	$(AM_V_CCLD)$(check_buxtonsimple_LINK) $(check_buxtonsimple_OBJECTS) $(check_buxtonsimple_LDADD) $(LIBS)
 src/shared/check_configurator-configurator.$(OBJEXT):  \
 	src/shared/$(am__dirstamp) \
 	src/shared/$(DEPDIR)/$(am__dirstamp)
@@ -1725,6 +1982,8 @@ mostlyclean-compile:
 	-rm -f src/db/*.lo
 	-rm -f src/libbuxton/*.$(OBJEXT)
 	-rm -f src/libbuxton/*.lo
+	-rm -f src/libbuxtonsimple/*.$(OBJEXT)
+	-rm -f src/libbuxtonsimple/*.lo
 	-rm -f src/security/*.$(OBJEXT)
 	-rm -f src/security/*.lo
 	-rm -f src/shared/*.$(OBJEXT)
@@ -1742,6 +2001,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@demo/$(DEPDIR)/bxt_hello_remove_group-helloremovegroup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@demo/$(DEPDIR)/bxt_hello_set-helloset.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@demo/$(DEPDIR)/bxt_hello_set_label-hellosetlabel.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@demo/$(DEPDIR)/bxt_hello_simple-hellosimple.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@demo/$(DEPDIR)/bxt_hello_unset-hellounset.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@demo/$(DEPDIR)/timing.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/cli/$(DEPDIR)/buxtonctl-client.Po@am__quote@
@@ -1750,14 +2010,17 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/core/$(DEPDIR)/buxtond-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/core/$(DEPDIR)/check_buxtond-daemon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/core/$(DEPDIR)/check_buxtond-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/core/$(DEPDIR)/check_buxtonsimple-daemon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/core/$(DEPDIR)/check_daemon-daemon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/db/$(DEPDIR)/gdbm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/db/$(DEPDIR)/memory.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/libbuxton/$(DEPDIR)/libbuxton_la-lbuxton.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/libbuxtonsimple/$(DEPDIR)/libbuxtonsimple_la-lbuxtonsimple.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/security/$(DEPDIR)/smack.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/backend.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/buxtonarray.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/buxtonlist.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/buxtonsimple-internals.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/check_configurator-configurator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/configurator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/dictionary.Plo@am__quote@
@@ -1770,7 +2033,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/util.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton-check_buxton.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton-check_utils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton_api-check_buxton_api.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton_api-check_utils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton_array-check_buxton_array.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton_array-check_utils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton_list-check_buxton_list.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxton_list-check_utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxtond-check_utils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_buxtonsimple-check_buxtonsimple.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_configurator-check_configurator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_daemon-check_daemon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_daemon-check_utils.Po@am__quote@
@@ -1809,6 +2079,13 @@ src/libbuxton/libbuxton_la-lbuxton.lo: src/libbuxton/lbuxton.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/libbuxton/lbuxton.c' object='src/libbuxton/libbuxton_la-lbuxton.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libbuxton_la_CFLAGS) $(CFLAGS) -c -o src/libbuxton/libbuxton_la-lbuxton.lo `test -f 'src/libbuxton/lbuxton.c' || echo '$(srcdir)/'`src/libbuxton/lbuxton.c
+
+src/libbuxtonsimple/libbuxtonsimple_la-lbuxtonsimple.lo: src/libbuxtonsimple/lbuxtonsimple.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libbuxtonsimple_la_CFLAGS) $(CFLAGS) -MT src/libbuxtonsimple/libbuxtonsimple_la-lbuxtonsimple.lo -MD -MP -MF src/libbuxtonsimple/$(DEPDIR)/libbuxtonsimple_la-lbuxtonsimple.Tpo -c -o src/libbuxtonsimple/libbuxtonsimple_la-lbuxtonsimple.lo `test -f 'src/libbuxtonsimple/lbuxtonsimple.c' || echo '$(srcdir)/'`src/libbuxtonsimple/lbuxtonsimple.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/libbuxtonsimple/$(DEPDIR)/libbuxtonsimple_la-lbuxtonsimple.Tpo src/libbuxtonsimple/$(DEPDIR)/libbuxtonsimple_la-lbuxtonsimple.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/libbuxtonsimple/lbuxtonsimple.c' object='src/libbuxtonsimple/libbuxtonsimple_la-lbuxtonsimple.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libbuxtonsimple_la_CFLAGS) $(CFLAGS) -c -o src/libbuxtonsimple/libbuxtonsimple_la-lbuxtonsimple.lo `test -f 'src/libbuxtonsimple/lbuxtonsimple.c' || echo '$(srcdir)/'`src/libbuxtonsimple/lbuxtonsimple.c
 
 src/cli/buxtonctl-main.o: src/cli/main.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(buxtonctl_CFLAGS) $(CFLAGS) -MT src/cli/buxtonctl-main.o -MD -MP -MF src/cli/$(DEPDIR)/buxtonctl-main.Tpo -c -o src/cli/buxtonctl-main.o `test -f 'src/cli/main.c' || echo '$(srcdir)/'`src/cli/main.c
@@ -1978,6 +2255,20 @@ demo/bxt_hello_set_label-hellosetlabel.obj: demo/hellosetlabel.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bxt_hello_set_label_CFLAGS) $(CFLAGS) -c -o demo/bxt_hello_set_label-hellosetlabel.obj `if test -f 'demo/hellosetlabel.c'; then $(CYGPATH_W) 'demo/hellosetlabel.c'; else $(CYGPATH_W) '$(srcdir)/demo/hellosetlabel.c'; fi`
 
+demo/bxt_hello_simple-hellosimple.o: demo/hellosimple.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bxt_hello_simple_CFLAGS) $(CFLAGS) -MT demo/bxt_hello_simple-hellosimple.o -MD -MP -MF demo/$(DEPDIR)/bxt_hello_simple-hellosimple.Tpo -c -o demo/bxt_hello_simple-hellosimple.o `test -f 'demo/hellosimple.c' || echo '$(srcdir)/'`demo/hellosimple.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) demo/$(DEPDIR)/bxt_hello_simple-hellosimple.Tpo demo/$(DEPDIR)/bxt_hello_simple-hellosimple.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='demo/hellosimple.c' object='demo/bxt_hello_simple-hellosimple.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bxt_hello_simple_CFLAGS) $(CFLAGS) -c -o demo/bxt_hello_simple-hellosimple.o `test -f 'demo/hellosimple.c' || echo '$(srcdir)/'`demo/hellosimple.c
+
+demo/bxt_hello_simple-hellosimple.obj: demo/hellosimple.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bxt_hello_simple_CFLAGS) $(CFLAGS) -MT demo/bxt_hello_simple-hellosimple.obj -MD -MP -MF demo/$(DEPDIR)/bxt_hello_simple-hellosimple.Tpo -c -o demo/bxt_hello_simple-hellosimple.obj `if test -f 'demo/hellosimple.c'; then $(CYGPATH_W) 'demo/hellosimple.c'; else $(CYGPATH_W) '$(srcdir)/demo/hellosimple.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) demo/$(DEPDIR)/bxt_hello_simple-hellosimple.Tpo demo/$(DEPDIR)/bxt_hello_simple-hellosimple.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='demo/hellosimple.c' object='demo/bxt_hello_simple-hellosimple.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bxt_hello_simple_CFLAGS) $(CFLAGS) -c -o demo/bxt_hello_simple-hellosimple.obj `if test -f 'demo/hellosimple.c'; then $(CYGPATH_W) 'demo/hellosimple.c'; else $(CYGPATH_W) '$(srcdir)/demo/hellosimple.c'; fi`
+
 demo/bxt_hello_unset-hellounset.o: demo/hellounset.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bxt_hello_unset_CFLAGS) $(CFLAGS) -MT demo/bxt_hello_unset-hellounset.o -MD -MP -MF demo/$(DEPDIR)/bxt_hello_unset-hellounset.Tpo -c -o demo/bxt_hello_unset-hellounset.o `test -f 'demo/hellounset.c' || echo '$(srcdir)/'`demo/hellounset.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) demo/$(DEPDIR)/bxt_hello_unset-hellounset.Tpo demo/$(DEPDIR)/bxt_hello_unset-hellounset.Po
@@ -2020,6 +2311,90 @@ test/check_buxton-check_buxton.obj: test/check_buxton.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_CFLAGS) $(CFLAGS) -c -o test/check_buxton-check_buxton.obj `if test -f 'test/check_buxton.c'; then $(CYGPATH_W) 'test/check_buxton.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxton.c'; fi`
 
+test/check_buxton_api-check_utils.o: test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -MT test/check_buxton_api-check_utils.o -MD -MP -MF test/$(DEPDIR)/check_buxton_api-check_utils.Tpo -c -o test/check_buxton_api-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_api-check_utils.Tpo test/$(DEPDIR)/check_buxton_api-check_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_buxton_api-check_utils.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -c -o test/check_buxton_api-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
+
+test/check_buxton_api-check_utils.obj: test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -MT test/check_buxton_api-check_utils.obj -MD -MP -MF test/$(DEPDIR)/check_buxton_api-check_utils.Tpo -c -o test/check_buxton_api-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_api-check_utils.Tpo test/$(DEPDIR)/check_buxton_api-check_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_buxton_api-check_utils.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -c -o test/check_buxton_api-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
+
+test/check_buxton_api-check_buxton_api.o: test/check_buxton_api.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -MT test/check_buxton_api-check_buxton_api.o -MD -MP -MF test/$(DEPDIR)/check_buxton_api-check_buxton_api.Tpo -c -o test/check_buxton_api-check_buxton_api.o `test -f 'test/check_buxton_api.c' || echo '$(srcdir)/'`test/check_buxton_api.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_api-check_buxton_api.Tpo test/$(DEPDIR)/check_buxton_api-check_buxton_api.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxton_api.c' object='test/check_buxton_api-check_buxton_api.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -c -o test/check_buxton_api-check_buxton_api.o `test -f 'test/check_buxton_api.c' || echo '$(srcdir)/'`test/check_buxton_api.c
+
+test/check_buxton_api-check_buxton_api.obj: test/check_buxton_api.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -MT test/check_buxton_api-check_buxton_api.obj -MD -MP -MF test/$(DEPDIR)/check_buxton_api-check_buxton_api.Tpo -c -o test/check_buxton_api-check_buxton_api.obj `if test -f 'test/check_buxton_api.c'; then $(CYGPATH_W) 'test/check_buxton_api.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxton_api.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_api-check_buxton_api.Tpo test/$(DEPDIR)/check_buxton_api-check_buxton_api.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxton_api.c' object='test/check_buxton_api-check_buxton_api.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_api_CFLAGS) $(CFLAGS) -c -o test/check_buxton_api-check_buxton_api.obj `if test -f 'test/check_buxton_api.c'; then $(CYGPATH_W) 'test/check_buxton_api.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxton_api.c'; fi`
+
+test/check_buxton_array-check_utils.o: test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -MT test/check_buxton_array-check_utils.o -MD -MP -MF test/$(DEPDIR)/check_buxton_array-check_utils.Tpo -c -o test/check_buxton_array-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_array-check_utils.Tpo test/$(DEPDIR)/check_buxton_array-check_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_buxton_array-check_utils.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -c -o test/check_buxton_array-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
+
+test/check_buxton_array-check_utils.obj: test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -MT test/check_buxton_array-check_utils.obj -MD -MP -MF test/$(DEPDIR)/check_buxton_array-check_utils.Tpo -c -o test/check_buxton_array-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_array-check_utils.Tpo test/$(DEPDIR)/check_buxton_array-check_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_buxton_array-check_utils.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -c -o test/check_buxton_array-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
+
+test/check_buxton_array-check_buxton_array.o: test/check_buxton_array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -MT test/check_buxton_array-check_buxton_array.o -MD -MP -MF test/$(DEPDIR)/check_buxton_array-check_buxton_array.Tpo -c -o test/check_buxton_array-check_buxton_array.o `test -f 'test/check_buxton_array.c' || echo '$(srcdir)/'`test/check_buxton_array.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_array-check_buxton_array.Tpo test/$(DEPDIR)/check_buxton_array-check_buxton_array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxton_array.c' object='test/check_buxton_array-check_buxton_array.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -c -o test/check_buxton_array-check_buxton_array.o `test -f 'test/check_buxton_array.c' || echo '$(srcdir)/'`test/check_buxton_array.c
+
+test/check_buxton_array-check_buxton_array.obj: test/check_buxton_array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -MT test/check_buxton_array-check_buxton_array.obj -MD -MP -MF test/$(DEPDIR)/check_buxton_array-check_buxton_array.Tpo -c -o test/check_buxton_array-check_buxton_array.obj `if test -f 'test/check_buxton_array.c'; then $(CYGPATH_W) 'test/check_buxton_array.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxton_array.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_array-check_buxton_array.Tpo test/$(DEPDIR)/check_buxton_array-check_buxton_array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxton_array.c' object='test/check_buxton_array-check_buxton_array.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_array_CFLAGS) $(CFLAGS) -c -o test/check_buxton_array-check_buxton_array.obj `if test -f 'test/check_buxton_array.c'; then $(CYGPATH_W) 'test/check_buxton_array.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxton_array.c'; fi`
+
+test/check_buxton_list-check_utils.o: test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -MT test/check_buxton_list-check_utils.o -MD -MP -MF test/$(DEPDIR)/check_buxton_list-check_utils.Tpo -c -o test/check_buxton_list-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_list-check_utils.Tpo test/$(DEPDIR)/check_buxton_list-check_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_buxton_list-check_utils.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -c -o test/check_buxton_list-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
+
+test/check_buxton_list-check_utils.obj: test/check_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -MT test/check_buxton_list-check_utils.obj -MD -MP -MF test/$(DEPDIR)/check_buxton_list-check_utils.Tpo -c -o test/check_buxton_list-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_list-check_utils.Tpo test/$(DEPDIR)/check_buxton_list-check_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_buxton_list-check_utils.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -c -o test/check_buxton_list-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
+
+test/check_buxton_list-check_buxton_list.o: test/check_buxton_list.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -MT test/check_buxton_list-check_buxton_list.o -MD -MP -MF test/$(DEPDIR)/check_buxton_list-check_buxton_list.Tpo -c -o test/check_buxton_list-check_buxton_list.o `test -f 'test/check_buxton_list.c' || echo '$(srcdir)/'`test/check_buxton_list.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_list-check_buxton_list.Tpo test/$(DEPDIR)/check_buxton_list-check_buxton_list.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxton_list.c' object='test/check_buxton_list-check_buxton_list.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -c -o test/check_buxton_list-check_buxton_list.o `test -f 'test/check_buxton_list.c' || echo '$(srcdir)/'`test/check_buxton_list.c
+
+test/check_buxton_list-check_buxton_list.obj: test/check_buxton_list.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -MT test/check_buxton_list-check_buxton_list.obj -MD -MP -MF test/$(DEPDIR)/check_buxton_list-check_buxton_list.Tpo -c -o test/check_buxton_list-check_buxton_list.obj `if test -f 'test/check_buxton_list.c'; then $(CYGPATH_W) 'test/check_buxton_list.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxton_list.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxton_list-check_buxton_list.Tpo test/$(DEPDIR)/check_buxton_list-check_buxton_list.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxton_list.c' object='test/check_buxton_list-check_buxton_list.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxton_list_CFLAGS) $(CFLAGS) -c -o test/check_buxton_list-check_buxton_list.obj `if test -f 'test/check_buxton_list.c'; then $(CYGPATH_W) 'test/check_buxton_list.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxton_list.c'; fi`
+
 test/check_buxtond-check_utils.o: test/check_utils.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtond_CFLAGS) $(CFLAGS) -MT test/check_buxtond-check_utils.o -MD -MP -MF test/$(DEPDIR)/check_buxtond-check_utils.Tpo -c -o test/check_buxtond-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxtond-check_utils.Tpo test/$(DEPDIR)/check_buxtond-check_utils.Po
@@ -2061,6 +2436,34 @@ src/core/check_buxtond-main.obj: src/core/main.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/core/main.c' object='src/core/check_buxtond-main.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtond_CFLAGS) $(CFLAGS) -c -o src/core/check_buxtond-main.obj `if test -f 'src/core/main.c'; then $(CYGPATH_W) 'src/core/main.c'; else $(CYGPATH_W) '$(srcdir)/src/core/main.c'; fi`
+
+test/check_buxtonsimple-check_buxtonsimple.o: test/check_buxtonsimple.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -MT test/check_buxtonsimple-check_buxtonsimple.o -MD -MP -MF test/$(DEPDIR)/check_buxtonsimple-check_buxtonsimple.Tpo -c -o test/check_buxtonsimple-check_buxtonsimple.o `test -f 'test/check_buxtonsimple.c' || echo '$(srcdir)/'`test/check_buxtonsimple.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxtonsimple-check_buxtonsimple.Tpo test/$(DEPDIR)/check_buxtonsimple-check_buxtonsimple.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxtonsimple.c' object='test/check_buxtonsimple-check_buxtonsimple.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -c -o test/check_buxtonsimple-check_buxtonsimple.o `test -f 'test/check_buxtonsimple.c' || echo '$(srcdir)/'`test/check_buxtonsimple.c
+
+test/check_buxtonsimple-check_buxtonsimple.obj: test/check_buxtonsimple.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -MT test/check_buxtonsimple-check_buxtonsimple.obj -MD -MP -MF test/$(DEPDIR)/check_buxtonsimple-check_buxtonsimple.Tpo -c -o test/check_buxtonsimple-check_buxtonsimple.obj `if test -f 'test/check_buxtonsimple.c'; then $(CYGPATH_W) 'test/check_buxtonsimple.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxtonsimple.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_buxtonsimple-check_buxtonsimple.Tpo test/$(DEPDIR)/check_buxtonsimple-check_buxtonsimple.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_buxtonsimple.c' object='test/check_buxtonsimple-check_buxtonsimple.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -c -o test/check_buxtonsimple-check_buxtonsimple.obj `if test -f 'test/check_buxtonsimple.c'; then $(CYGPATH_W) 'test/check_buxtonsimple.c'; else $(CYGPATH_W) '$(srcdir)/test/check_buxtonsimple.c'; fi`
+
+src/core/check_buxtonsimple-daemon.o: src/core/daemon.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -MT src/core/check_buxtonsimple-daemon.o -MD -MP -MF src/core/$(DEPDIR)/check_buxtonsimple-daemon.Tpo -c -o src/core/check_buxtonsimple-daemon.o `test -f 'src/core/daemon.c' || echo '$(srcdir)/'`src/core/daemon.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/core/$(DEPDIR)/check_buxtonsimple-daemon.Tpo src/core/$(DEPDIR)/check_buxtonsimple-daemon.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/core/daemon.c' object='src/core/check_buxtonsimple-daemon.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -c -o src/core/check_buxtonsimple-daemon.o `test -f 'src/core/daemon.c' || echo '$(srcdir)/'`src/core/daemon.c
+
+src/core/check_buxtonsimple-daemon.obj: src/core/daemon.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -MT src/core/check_buxtonsimple-daemon.obj -MD -MP -MF src/core/$(DEPDIR)/check_buxtonsimple-daemon.Tpo -c -o src/core/check_buxtonsimple-daemon.obj `if test -f 'src/core/daemon.c'; then $(CYGPATH_W) 'src/core/daemon.c'; else $(CYGPATH_W) '$(srcdir)/src/core/daemon.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/core/$(DEPDIR)/check_buxtonsimple-daemon.Tpo src/core/$(DEPDIR)/check_buxtonsimple-daemon.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/core/daemon.c' object='src/core/check_buxtonsimple-daemon.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_buxtonsimple_CFLAGS) $(CFLAGS) -c -o src/core/check_buxtonsimple-daemon.obj `if test -f 'src/core/daemon.c'; then $(CYGPATH_W) 'src/core/daemon.c'; else $(CYGPATH_W) '$(srcdir)/src/core/daemon.c'; fi`
 
 src/shared/check_configurator-configurator.o: src/shared/configurator.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_configurator_CFLAGS) $(CFLAGS) -MT src/shared/check_configurator-configurator.o -MD -MP -MF src/shared/$(DEPDIR)/check_configurator-configurator.Tpo -c -o src/shared/check_configurator-configurator.o `test -f 'src/shared/configurator.c' || echo '$(srcdir)/'`src/shared/configurator.c
@@ -2195,6 +2598,7 @@ clean-libtool:
 	-rm -rf .libs _libs
 	-rm -rf src/db/.libs src/db/_libs
 	-rm -rf src/libbuxton/.libs src/libbuxton/_libs
+	-rm -rf src/libbuxtonsimple/.libs src/libbuxtonsimple/_libs
 	-rm -rf src/security/.libs src/security/_libs
 	-rm -rf src/shared/.libs src/shared/_libs
 
@@ -2761,6 +3165,27 @@ check_buxton.log: check_buxton$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+check_buxton_api.log: check_buxton_api$(EXEEXT)
+	@p='check_buxton_api$(EXEEXT)'; \
+	b='check_buxton_api'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+check_buxton_array.log: check_buxton_array$(EXEEXT)
+	@p='check_buxton_array$(EXEEXT)'; \
+	b='check_buxton_array'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+check_buxton_list.log: check_buxton_list$(EXEEXT)
+	@p='check_buxton_list$(EXEEXT)'; \
+	b='check_buxton_list'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 check_shared_lib.log: check_shared_lib$(EXEEXT)
 	@p='check_shared_lib$(EXEEXT)'; \
 	b='check_shared_lib'; \
@@ -2785,6 +3210,13 @@ check_smack.log: check_smack$(EXEEXT)
 check_configurator.log: check_configurator$(EXEEXT)
 	@p='check_configurator$(EXEEXT)'; \
 	b='check_configurator'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+check_buxtonsimple.log: check_buxtonsimple$(EXEEXT)
+	@p='check_buxtonsimple$(EXEEXT)'; \
+	b='check_buxtonsimple'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -3043,6 +3475,8 @@ distclean-generic:
 	-rm -f src/db/$(am__dirstamp)
 	-rm -f src/libbuxton/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/libbuxton/$(am__dirstamp)
+	-rm -f src/libbuxtonsimple/$(DEPDIR)/$(am__dirstamp)
+	-rm -f src/libbuxtonsimple/$(am__dirstamp)
 	-rm -f src/security/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/security/$(am__dirstamp)
 	-rm -f src/shared/$(DEPDIR)/$(am__dirstamp)
@@ -3061,7 +3495,7 @@ clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
 
 distclean: distclean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/security/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/libbuxtonsimple/$(DEPDIR) src/security/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-local distclean-tags
@@ -3114,7 +3548,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/security/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/libbuxtonsimple/$(DEPDIR) src/security/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

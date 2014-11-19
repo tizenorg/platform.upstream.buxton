@@ -150,12 +150,71 @@ bool cli_remove_group(BuxtonControl *control, BuxtonDataType type,
 	return ret;
 }
 
+void get_label_callback(BuxtonResponse response, void *data)
+{
+	void **r = data;
+
+	*r = NULL;
+	if (buxton_response_status(response) != 0) {
+		return;
+	}
+
+	if (buxton_response_value_type(response) != BUXTON_TYPE_STRING) {
+		return;
+	}
+
+	*r = buxton_response_value(response);
+}
+
 bool cli_get_label(BuxtonControl *control, BuxtonDataType type,
 		   char *one, char *two, char *three,
 		   __attribute__((unused)) char *four)
 {
-	/* Not yet implemented */
-	return false;
+	BuxtonKey key;
+	_cleanup_free_ char *label = NULL;
+	char *layer = one;
+	char *group = two;
+	char *name = three;
+
+
+	BuxtonData ddata;
+	BuxtonString dlabel;
+	bool ret = false;
+
+	if (!layer || !group) {
+		return false;
+	}
+
+	key = buxton_key_create(group, name, layer, type);
+	if (!key) {
+		return false;
+	}
+
+	if (control->client.direct) {
+		ddata.type = BUXTON_TYPE_UNSET;
+		dlabel.value = NULL;
+		ret = buxton_direct_get_value_for_layer(control, key,
+							&ddata, &dlabel,
+							NULL);
+		if (ddata.type == BUXTON_TYPE_STRING) {
+			free(ddata.store.d_string.value);
+		}
+		label = dlabel.value;
+	} else {
+		ret = buxton_get_label(&control->client,
+					      key,
+					      get_label_callback,
+					      &label, true);
+	}
+	if (ret) {
+		printf("Requested key not found in layer \'%s\': %s:%s\n",
+		       layer, group, name);
+		return false;
+	}
+
+	printf("[%s] %s:%s - %s\n", layer, group, name, label);
+
+	return true;
 }
 
 bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
@@ -177,7 +236,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 
 	set.type = type;
 	switch (set.type) {
-	case STRING:
+	case BUXTON_TYPE_STRING:
 		set.store.d_string.value = value.value;
 		set.store.d_string.length = value.length;
 		if (control->client.direct) {
@@ -189,7 +248,8 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 						four, NULL, NULL, true);
 		}
 		break;
-	case INT32:
+	case BUXTON_TYPE_INT32:
+		errno = 0;
 		set.store.d_int32 = (int32_t)strtol(four, NULL, 10);
 		if (errno) {
 			printf("Invalid int32_t value\n");
@@ -205,7 +265,8 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 						NULL, true);
 		}
 		break;
-	case UINT32:
+	case BUXTON_TYPE_UINT32:
+		errno = 0;
 		set.store.d_uint32 = (uint32_t)strtol(value.value, NULL, 10);
 		if (errno) {
 			printf("Invalid uint32_t value\n");
@@ -221,7 +282,8 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 						NULL, true);
 		}
 		break;
-	case INT64:
+	case BUXTON_TYPE_INT64:
+		errno = 0;
 		set.store.d_int64 = strtoll(value.value, NULL, 10);
 		if (errno) {
 			printf("Invalid int64_t value\n");
@@ -237,7 +299,8 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 						NULL, true);
 		}
 		break;
-	case UINT64:
+	case BUXTON_TYPE_UINT64:
+		errno = 0;
 		set.store.d_uint64 = strtoull(value.value, NULL, 10);
 		if (errno) {
 			printf("Invalid uint64_t value\n");
@@ -253,7 +316,8 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 						NULL, true);
 		}
 		break;
-	case FLOAT:
+	case BUXTON_TYPE_FLOAT:
+		errno = 0;
 		set.store.d_float = strtof(value.value, NULL);
 		if (errno) {
 			printf("Invalid float value\n");
@@ -269,7 +333,8 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 						NULL, true);
 		}
 		break;
-	case DOUBLE:
+	case BUXTON_TYPE_DOUBLE:
+		errno = 0;
 		set.store.d_double = strtod(value.value, NULL);
 		if (errno) {
 			printf("Invalid double value\n");
@@ -285,7 +350,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 						NULL, true);
 		}
 		break;
-	case BOOLEAN:
+	case BUXTON_TYPE_BOOLEAN:
 		if (strcaseeq(value.value, "true") ||
 		    strcaseeq(value.value, "on") ||
 		    strcaseeq(value.value, "enable") ||
@@ -337,10 +402,10 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 
 void get_value_callback(BuxtonResponse response, void *data)
 {
-	BuxtonKey key;
 	BuxtonData *r = (BuxtonData *)data;
 	void *p;
 
+	r->type = BUXTON_TYPE_UNSET;
 	if (buxton_response_status(response) != 0) {
 		return;
 	}
@@ -349,54 +414,47 @@ void get_value_callback(BuxtonResponse response, void *data)
 	if (!p) {
 		return;
 	}
-	key = buxton_response_key(response);
-	if (!key) {
-		free(p);
-		return;
-	}
 
-	switch (buxton_key_get_type(key)) {
-	case STRING:
+	switch (buxton_response_value_type(response)) {
+	case BUXTON_TYPE_STRING:
 		r->store.d_string.value = (char *)p;
 		r->store.d_string.length = (uint32_t)strlen(r->store.d_string.value) + 1;
-		r->type = STRING;
+		r->type = BUXTON_TYPE_STRING;
+		p = NULL;
 		break;
-	case INT32:
+	case BUXTON_TYPE_INT32:
 		r->store.d_int32 = *(int32_t *)p;
-		r->type = INT32;
+		r->type = BUXTON_TYPE_INT32;
 		break;
-	case UINT32:
+	case BUXTON_TYPE_UINT32:
 		r->store.d_uint32 = *(uint32_t *)p;
-		r->type = UINT32;
+		r->type = BUXTON_TYPE_UINT32;
 		break;
-	case INT64:
+	case BUXTON_TYPE_INT64:
 		r->store.d_int64 = *(int64_t *)p;
-		r->type = INT64;
+		r->type = BUXTON_TYPE_INT64;
 		break;
-	case UINT64:
+	case BUXTON_TYPE_UINT64:
 		r->store.d_uint64 = *(uint64_t *)p;
-		r->type = UINT64;
+		r->type = BUXTON_TYPE_UINT64;
 		break;
-	case FLOAT:
+	case BUXTON_TYPE_FLOAT:
 		r->store.d_float = *(float *)p;
-		r->type = FLOAT;
+		r->type = BUXTON_TYPE_FLOAT;
 		break;
-	case DOUBLE:
+	case BUXTON_TYPE_DOUBLE:
 		memcpy(&r->store.d_double, p, sizeof(double));
-		r->type = DOUBLE;
+		r->type = BUXTON_TYPE_DOUBLE;
 		break;
-	case BOOLEAN:
+	case BUXTON_TYPE_BOOLEAN:
 		r->store.d_boolean = *(bool *)p;
-		r->type = BOOLEAN;
+		r->type = BUXTON_TYPE_BOOLEAN;
 		break;
 	default:
 		break;
 	}
 
-	if (buxton_key_get_type(key) != STRING) {
-		free(p);
-	}
-	free(key);
+	free(p);
 }
 
 bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
@@ -407,6 +465,8 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	_cleanup_free_ char *prefix = NULL;
 	_cleanup_free_ char *group = NULL;
 	_cleanup_free_ char *name = NULL;
+	_cleanup_free_ char *value = NULL;
+	const char *tname = NULL;
 	BuxtonString dlabel;
 	bool ret = false;
 	int32_t ret_val;
@@ -416,13 +476,13 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	if (three != NULL) {
 		key = buxton_key_create(two, three, one, type);
 		r = asprintf(&prefix, "[%s] ", one);
-		if (!r) {
+		if (r < 0) {
 			abort();
 		}
 	} else {
 		key = buxton_key_create(one, two, NULL, type);
 		r = asprintf(&prefix, " ");
-		if (!r) {
+		if (r < 0) {
 			abort();
 		}
 	}
@@ -472,42 +532,58 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	group = get_group(key);
 	name = get_name(key);
 	switch (get.type) {
-	case STRING:
-		printf("%s%s:%s = %s\n", prefix, nv(group), nv(name),
-		       get.store.d_string.value ? get.store.d_string.value : "");
+	case BUXTON_TYPE_STRING:
+		value = get.store.d_string.value;
+		tname = "string";
 		break;
-	case INT32:
-		printf("%s%s:%s = %" PRId32 "\n", prefix, nv(group),
-		       nv(name), get.store.d_int32);
-		break;
-	case UINT32:
-		printf("%s%s:%s = %" PRIu32 "\n", prefix, nv(group),
-		       nv(name), get.store.d_uint32);
-		break;
-	case INT64:
-		printf("%s%s:%s = %" PRId64 "\n", prefix, nv(group),
-		       nv(name), get.store.d_int64);
-		break;
-	case UINT64:
-		printf("%s%s:%s = %" PRIu64 "\n", prefix, nv(group),
-		       nv(name), get.store.d_uint64);
-		break;
-	case FLOAT:
-		printf("%s%s:%s = %f\n", prefix, nv(group),
-		       nv(name), get.store.d_float);
-		break;
-	case DOUBLE:
-		printf("%s%s:%s = %f\n", prefix, nv(group),
-		       nv(name), get.store.d_double);
-		break;
-	case BOOLEAN:
-		if (get.store.d_boolean == true) {
-			printf("%s%s:%s = true\n", prefix, nv(group),
-			       nv(name));
-		} else {
-			printf("%s%s:%s = false\n", prefix, nv(group),
-			       nv(name));
+	case BUXTON_TYPE_INT32:
+		r = asprintf(&value, "%" PRId32, get.store.d_int32);
+		if (r <= 0) {
+			abort();
 		}
+		tname = "int32";
+		break;
+	case BUXTON_TYPE_UINT32:
+		r = asprintf(&value, "%" PRIu32, get.store.d_uint32);
+		if (r <= 0) {
+			abort();
+		}
+		tname = "uint32";
+		break;
+	case BUXTON_TYPE_INT64:
+		r = asprintf(&value, "%" PRId64, get.store.d_int64);
+		if (r <= 0) {
+			abort();
+		}
+		tname = "int64";
+		break;
+	case BUXTON_TYPE_UINT64:
+		r = asprintf(&value, "%" PRIu64, get.store.d_uint64);
+		if (r <= 0) {
+			abort();
+		}
+		tname = "uint64";
+		break;
+	case BUXTON_TYPE_FLOAT:
+		r = asprintf(&value, "%f", get.store.d_float);
+		if (r <= 0) {
+			abort();
+		}
+		tname = "float";
+		break;
+	case BUXTON_TYPE_DOUBLE:
+		r = asprintf(&value, "%lf", get.store.d_double);
+		if (r <= 0) {
+			abort();
+		}
+		tname = "double";
+		break;
+	case BUXTON_TYPE_BOOLEAN:
+		r = asprintf(&value, "%s", get.store.d_boolean == true ? "true" : "false");
+		if (r <= 0) {
+			abort();
+		}
+		tname = "bool";
 		break;
 	case BUXTON_TYPE_MIN:
 		printf("Requested key was not found: %s:%s\n", nv(group),
@@ -517,10 +593,9 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 		printf("unknown type\n");
 		return false;
 	}
+	printf("%s%s:%s = %s: %s\n", prefix, nv(group),
+		       nv(name), tname, nv(value));
 
-	if (get.type == STRING) {
-		free(get.store.d_string.value);
-	}
 	return true;
 }
 

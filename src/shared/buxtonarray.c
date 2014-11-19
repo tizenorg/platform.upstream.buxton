@@ -27,7 +27,7 @@ BuxtonArray *buxton_array_new(void)
 bool buxton_array_add(BuxtonArray *array,
 		      void *data)
 {
-	uint new_len;
+	uint16_t new_len;
 	size_t curr, new_size;
 
 	if (!array || !data) {
@@ -40,7 +40,10 @@ bool buxton_array_add(BuxtonArray *array,
 		}
 	}
 
-	new_len = array->len += 1;
+	new_len = (uint16_t)(array->len + 1);
+	if (!new_len) {
+		return false;
+	}
 	curr = (size_t)(array->len*sizeof(void*));
 	new_size = curr + sizeof(void*);
 	if (new_len >= array->len) {
@@ -61,7 +64,7 @@ void *buxton_array_get(BuxtonArray *array, uint16_t index)
 	if (!array) {
 		return NULL;
 	}
-	if (index > array->len) {
+	if (index >= array->len) {
 		return NULL;
 	}
 	return array->data[index];
@@ -78,8 +81,9 @@ void buxton_array_free(BuxtonArray **array,
 
 	if (free_method) {
 		/* Call the free_method on all members */
-		for (i = 0; i < (*array)->len; i++)
+		for (i = 0; i < (*array)->len; i++) {
 			free_method((*array)->data[i]);
+		}
 	}
 	/* Ensure this array is indeed gone. */
 	free((*array)->data);
