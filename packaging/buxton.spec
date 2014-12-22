@@ -1,5 +1,5 @@
 Name:           buxton
-Version:        4
+Version:        5
 Release:        0
 License:        LGPL-2.1+
 Summary:        A security-enabled configuration system
@@ -127,7 +127,7 @@ fi
 %manifest %{name}.manifest
 %{_includedir}/buxton.h
 %{_libdir}/libbuxton.so
-%{_libdir}/pkgconfig/libbuxton.pc
+%{_libdir}/pkgconfig/buxton.pc
 
 
 %files -n buxtonsimple
@@ -139,5 +139,5 @@ fi
 %manifest %{name}.manifest
 %{_includedir}/buxtonsimple.h
 %{_libdir}/libbuxtonsimple.so
-%{_libdir}/pkgconfig/libbuxtonsimple.pc
+%{_libdir}/pkgconfig/buxtonsimple.pc
 
