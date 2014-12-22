@@ -121,8 +121,8 @@ DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure $(am__configure_deps) \
 	$(srcdir)/config.h.in $(top_srcdir)/data/buxton.service.in \
 	$(top_srcdir)/data/buxton.socket.in \
-	$(top_srcdir)/data/libbuxton.pc.in \
-	$(top_srcdir)/data/libbuxtonsimple.pc.in \
+	$(top_srcdir)/data/buxton.pc.in \
+	$(top_srcdir)/data/buxtonsimple.pc.in \
 	$(top_srcdir)/test/test-pass.ini.in \
 	$(top_srcdir)/test/test-fail.ini.in \
 	$(top_srcdir)/test/test.conf.in depcomp $(dist_man_MANS) \
@@ -141,7 +141,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = data/buxton.service data/buxton.socket \
-	data/libbuxton.pc data/libbuxtonsimple.pc test/test-pass.ini \
+	data/buxton.pc data/buxtonsimple.pc test/test-pass.ini \
 	test/test-fail.ini test/test.conf
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -970,8 +970,8 @@ LIBBUXTON_REVISION = 0
 LIBBUXTON_AGE = 0
 pkgconfiglibdir = $(libdir)/pkgconfig
 pkgconfiglib_DATA = \
-	data/libbuxton.pc \
-	data/libbuxtonsimple.pc
+	data/buxton.pc \
+	data/buxtonsimple.pc
 
 @MANPAGE_TRUE@dist_man_MANS = \
 @MANPAGE_TRUE@	docs/buxton.7 \
@@ -1030,8 +1030,8 @@ EXTRA_DIST = \
 	LICENSE.LGPL2.1 \
 	HACKING \
 	check_db_clean \
-	data/libbuxton.pc.in \
-	data/libbuxtonsimple.pc.in \
+	data/buxton.pc.in \
+	data/buxtonsimple.pc.in \
 	docs/LICENSE.MIT \
 	src/libbuxton/lbuxton.sym \
 	src/libbuxtonsimple/lbuxtonsimple.sym \
@@ -1498,9 +1498,9 @@ data/buxton.service: $(top_builddir)/config.status $(top_srcdir)/data/buxton.ser
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 data/buxton.socket: $(top_builddir)/config.status $(top_srcdir)/data/buxton.socket.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
-data/libbuxton.pc: $(top_builddir)/config.status $(top_srcdir)/data/libbuxton.pc.in
+data/buxton.pc: $(top_builddir)/config.status $(top_srcdir)/data/buxton.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
-data/libbuxtonsimple.pc: $(top_builddir)/config.status $(top_srcdir)/data/libbuxtonsimple.pc.in
+data/buxtonsimple.pc: $(top_builddir)/config.status $(top_srcdir)/data/buxtonsimple.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 test/test-pass.ini: $(top_builddir)/config.status $(top_srcdir)/test/test-pass.ini.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@

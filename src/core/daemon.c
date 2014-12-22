@@ -26,6 +26,21 @@
 #include "util.h"
 #include "buxtonlist.h"
 
+static char *notify_key_name(_BuxtonKey *key)
+{
+	int r;
+	char *result;
+
+	if (!*key->group.value || !*key->name.value)
+		return NULL;
+
+	r = asprintf(&result, "%s\n%s", key->group.value, key->name.value);
+	if (r == -1) {
+		abort();
+	}
+	return result;
+}
+
 bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 		_BuxtonKey *key, BuxtonData **value)
 {
@@ -144,6 +159,18 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 		}
 		*value = &list[0];
 		break;
+	case BUXTON_CONTROL_LIST_NAMES:
+		if (count != 3) {
+			return false;
+		}
+		if (list[0].type != BUXTON_TYPE_STRING || list[1].type != BUXTON_TYPE_STRING ||
+		    list[2].type != BUXTON_TYPE_STRING) {
+			return false;
+		}
+		key->layer = list[0].store.d_string;
+		key->group = list[1].store.d_string;
+		key->name = list[2].store.d_string;
+		break;
 	case BUXTON_CONTROL_UNSET:
 		if (count != 4) {
 			return false;
@@ -257,6 +284,9 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	case BUXTON_CONTROL_LIST:
 		key_list = list_keys(self, client, &value->store.d_string,
 				     &response);
+		break;
+	case BUXTON_CONTROL_LIST_NAMES:
+		key_list = list_names(self, client, &key, &response);
 		break;
 	case BUXTON_CONTROL_NOTIFY:
 		register_notification(self, client, &key, msgid, &response);
@@ -391,6 +421,26 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 			abort();
 		}
 		break;
+	case BUXTON_CONTROL_LIST_NAMES:
+		if (key_list) {
+			for (i = 0; i < key_list->len; i++) {
+				if (!buxton_array_add(out_list, buxton_array_get(key_list, i))) {
+					abort();
+				}
+			}
+			buxton_array_free(&key_list, NULL);
+		}
+		response_len = buxton_serialize_message(&response_store,
+							BUXTON_CONTROL_STATUS,
+							msgid, out_list);
+		if (response_len == 0) {
+			if (errno == ENOMEM) {
+				abort();
+			}
+			buxton_log("Failed to serialize list names response message\n");
+			abort();
+		}
+		break;
 	case BUXTON_CONTROL_NOTIFY:
 		response_len = buxton_serialize_message(&response_store,
 							BUXTON_CONTROL_STATUS,
@@ -461,15 +511,14 @@ void buxtond_notify_clients(BuxtonDaemon *self, client_list_item *client,
 	size_t response_len;
 	BuxtonArray *out_list = NULL;
 	_cleanup_free_ char *key_name;
-	int r;
 
 	assert(self);
 	assert(client);
 	assert(key);
 
-	r = asprintf(&key_name, "%s%s", key->group.value, key->name.value);
-	if (r == -1) {
-		abort();
+	key_name = notify_key_name(key);
+	if (!key_name) {
+		return;
 	}
 	list = hashmap_get(self->notify_mapping, key_name);
 	if (!list) {
@@ -824,6 +873,22 @@ BuxtonArray *list_keys(BuxtonDaemon *self, client_list_item *client,
 	return ret_list;
 }
 
+BuxtonArray *list_names(BuxtonDaemon *self,  client_list_item *client,
+			_BuxtonKey *key, int32_t *status)
+{
+	BuxtonArray *ret_list = NULL;
+	assert(self);
+	assert(client);
+	assert(status);
+
+	*status = -1;
+	if (buxton_direct_list_names(&self->buxton, &key->layer, &key->group,
+	    &key->name, &ret_list)) {
+		*status = 0;
+	}
+	return ret_list;
+}
+
 void register_notification(BuxtonDaemon *self, client_list_item *client,
 			   _BuxtonKey *key, uint32_t msgid,
 			   int32_t *status)
@@ -834,7 +899,6 @@ void register_notification(BuxtonDaemon *self, client_list_item *client,
 	BuxtonData *old_data = NULL;
 	int32_t key_status;
 	char *key_name;
-	int r;
 	uint64_t *fd = NULL;
 	char *key_name_copy = NULL;
 
@@ -861,9 +925,9 @@ void register_notification(BuxtonDaemon *self, client_list_item *client,
 	nitem->msgid = msgid;
 
 	/* May be null, but will append regardless */
-	r = asprintf(&key_name, "%s%s", key->group.value, key->name.value);
-	if (r == -1) {
-		abort();
+	key_name = notify_key_name(key);
+	if (!key_name) {
+		return;
 	}
 
 	key_name_copy = strdup(key_name);
@@ -914,6 +978,7 @@ void register_notification(BuxtonDaemon *self, client_list_item *client,
 uint32_t unregister_notification(BuxtonDaemon *self, client_list_item *client,
 				 _BuxtonKey *key, int32_t *status)
 {
+	BuxtonList *plist;
 	BuxtonList *n_list = NULL;
 	BuxtonList *key_list = NULL;
 	BuxtonList *elem = NULL;
@@ -921,7 +986,6 @@ uint32_t unregister_notification(BuxtonDaemon *self, client_list_item *client,
 	uint32_t msgid = 0;
 	_cleanup_free_ char *key_name = NULL;
 	void *old_key_name;
-	int r;
 	char *client_keyname = NULL;
 	uint64_t fd = 0;
 	void *old_fd = NULL;
@@ -932,9 +996,9 @@ uint32_t unregister_notification(BuxtonDaemon *self, client_list_item *client,
 	assert(status);
 
 	*status = -1;
-	r = asprintf(&key_name, "%s%s", key->group.value, key->name.value);
-	if (r == -1) {
-		abort();
+	key_name = notify_key_name(key);
+	if (!key_name) {
+		return 0;
 	}
 	n_list = hashmap_get2(self->notify_mapping, key_name, &old_key_name);
 	/* This key isn't actually registered for notifications */
@@ -961,7 +1025,7 @@ uint32_t unregister_notification(BuxtonDaemon *self, client_list_item *client,
 	key_list = hashmap_get2(self->client_key_mapping, &fd, &old_fd);
 
 	if (!key_list || !old_fd) {
-		abort();
+		return 0;
 	}
 
 	BUXTON_LIST_FOREACH(key_list, elem) {
@@ -972,22 +1036,32 @@ uint32_t unregister_notification(BuxtonDaemon *self, client_list_item *client,
 	};
 
 	if (client_keyname) {
+		plist = key_list;
 		buxton_list_remove(&key_list, client_keyname, true);
 		if (!key_list) {
 			hashmap_remove(self->client_key_mapping, &fd);
 			free(old_fd);
+		} else if (plist != key_list) {
+			if (hashmap_update(self->client_key_mapping, &fd, key_list) < 0) {
+				abort();
+			}
 		}
 	}
 
 	msgid = citem->msgid;
 	/* Remove client from notifications */
 	free_buxton_data(&(citem->old_data));
+	plist = n_list;
 	buxton_list_remove(&n_list, citem, true);
 
 	/* If we removed the last item, remove the mapping too */
 	if (!n_list) {
 		(void)hashmap_remove(self->notify_mapping, key_name);
 		free(old_key_name);
+	} else if (plist != n_list) {
+		if (hashmap_update(self->notify_mapping, key_name, n_list) < 0) {
+			abort();
+		}
 	}
 
 	*status = 0;

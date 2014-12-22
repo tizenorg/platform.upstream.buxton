@@ -50,6 +50,24 @@ typedef struct Command {
 } Command;
 
 /**
+ * Checks the availability of Buxton.
+ * @param control An initialized control structure
+ * @param type Unused
+ * @param one Unused
+ * @param two Unused
+ * @param three Unused
+ * @param four Unused
+ * @returns bool indicating success or failure
+ */
+bool cli_check_availability(BuxtonControl *control,
+		      BuxtonDataType type,
+		      char *one,
+		      char *two,
+		      char *three,
+		      char * four)
+	__attribute__((warn_unused_result));
+
+/**
  * Create an initialized, empty db
  * @param control An initialized control structure
  * @param type Unused
@@ -168,6 +186,22 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type, char *one,
  * @returns bool indicating success or failure
  */
 bool cli_list_keys(BuxtonControl *control,
+		   __attribute__((unused))BuxtonDataType type,
+		   char *one, char *two, char *three,
+		   __attribute__((unused)) char *four)
+	__attribute__((warn_unused_result));
+
+/*
+ * List keys or groups for a layer in Buxton
+ * @param control An initialized control structure
+ * @param type Type of query: 0 for groups, 1 for keys
+ * @param one Layer to query
+ * @param two group or prefix or NULL
+ * @param three prefix or NULL
+ * @param four NULL (unused)
+ * @returns bool indicating success or failure
+ */
+bool cli_list_names(BuxtonControl *control,
 		   __attribute__((unused))BuxtonDataType type,
 		   char *one, char *two, char *three,
 		   __attribute__((unused)) char *four)
