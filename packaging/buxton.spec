@@ -13,6 +13,7 @@ BuildRequires:  gdbm-devel
 BuildRequires:  pkgconfig(check)
 BuildRequires:  pkgconfig(systemd)
 BuildRequires:  pkgconfig(libsystemd-daemon)
+BuildRequires:  pkgconfig(cynara-client-async)
 Requires(post): buxton
 Requires(post): smack
 Requires(post): /usr/bin/chown

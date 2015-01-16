@@ -103,7 +103,7 @@ START_TEST(buxton_direct_remove_group_check)
 	group.group = buxton_string_pack("tgroup");
 	group.name = (BuxtonString){ NULL, 0 };
 	group.type = BUXTON_TYPE_STRING;
-	fail_if(!buxton_direct_remove_group(&c, &group, NULL),
+	fail_if(!buxton_direct_remove_group(&c, &group),
 		"Failed to remove group");
 }
 END_TEST
@@ -157,7 +157,7 @@ START_TEST(buxton_direct_get_value_for_layer_check)
 	c.client.uid = getuid();
 	fail_if(buxton_direct_open(&c) == false,
 		"Direct open failed without daemon.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Retrieving value from buxton gdbm backend failed.");
 	fail_if(result.type != BUXTON_TYPE_STRING,
 		"Buxton gdbm backend returned incorrect result type.");
@@ -191,7 +191,7 @@ START_TEST(buxton_direct_get_value_check)
 		"Failed to allocate test string.");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Failed to set second value.");
-	fail_if(buxton_direct_get_value(&c, &key, &result, &dlabel, NULL) == -1,
+	fail_if(buxton_direct_get_value(&c, &key, &result, &dlabel) == -1,
 		"Retrieving value from buxton gdbm backend failed.");
 	fail_if(result.type != BUXTON_TYPE_STRING,
 		"Buxton gdbm backend returned incorrect result type.");
@@ -201,7 +201,7 @@ START_TEST(buxton_direct_get_value_check)
 	if (result.store.d_string.value)
 		free(result.store.d_string.value);
 	key.type = BUXTON_TYPE_UNSET;
-	fail_if(buxton_direct_get_value(&c, &key, &result, &dlabel, NULL) == -1,
+	fail_if(buxton_direct_get_value(&c, &key, &result, &dlabel) == -1,
 		"Retrieving value from buxton gdbm backend failed.");
 	fail_if(result.type != BUXTON_TYPE_STRING,
 		"Buxton gdbm backend returned incorrect result type.");
@@ -244,14 +244,14 @@ START_TEST(buxton_memory_backend_check)
 	data.store.d_string = buxton_string_pack("bxt_test_value");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Setting value in buxton memory backend directly failed.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Retrieving value from buxton memory backend directly failed.");
 	// FIXME: BUXTON_GROUP_VALUE is the dummy group data value, but the memory
 	// backend doesn't understand groups, so this is the current workaround.
 	fail_if(!streq(result.store.d_string.value, "bxt_test_value"),
 		"Buxton memory returned a different value to that set.");
 	key.type = BUXTON_TYPE_UNSET;
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Retrieving value from buxton memory backend directly failed.");
 	fail_if(!streq(result.store.d_string.value, "bxt_test_value"),
 		"Buxton memory returned a different value to that set.");
@@ -359,7 +359,7 @@ START_TEST(buxton_group_label_check)
 		"Creating group failed.");
 	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
 		"Failed to set group label.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Retrieving group label failed.");
 	fail_if(!streq("*", dlabel.value),
 		"Retrieved group label is incorrect.");
@@ -390,7 +390,7 @@ START_TEST(buxton_name_label_check)
 		"Creating group failed.");
 	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
 		"Failed to set group label.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Retrieving group label failed.");
 	fail_if(!streq("*", dlabel.value),
 		"Retrieved group label is incorrect.");
@@ -403,7 +403,7 @@ START_TEST(buxton_name_label_check)
 	data.store.d_string = buxton_string_pack("value1-foo");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Failed to set key name-foo.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Failed to get value for name-foo 1");
 	fail_if(!streq("value1-foo", result.store.d_string.value),
 		"Retrieved key value is incorrect 1");
@@ -412,7 +412,7 @@ START_TEST(buxton_name_label_check)
 	free(result.store.d_string.value);
 	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
 		"Failed to set name label.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Failed to get value for name-foo 2");
 	fail_if(!streq("value1-foo", result.store.d_string.value),
 		"Retrieved key value is incorrect 2");
@@ -425,7 +425,7 @@ START_TEST(buxton_name_label_check)
 	data.store.d_string = buxton_string_pack("value2-foo");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Failed to modify key name-foo.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel),
 		"Failed to get new value for name-foo.");
 	fail_if(!streq("value2-foo", result.store.d_string.value),
 		"New key value is incorrect.");

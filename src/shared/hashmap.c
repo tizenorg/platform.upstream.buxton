@@ -148,6 +148,10 @@ int string_compare_func(const void *a, const void *b) {
         return strcmp(a, b);
 }
 
+unsigned no_hash_func(const void *p) {
+        return *(const uint16_t*) p;
+}
+
 unsigned trivial_hash_func(const void *p) {
         return PTR_TO_UINT(p);
 }

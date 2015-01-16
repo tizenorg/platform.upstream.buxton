@@ -13,7 +13,10 @@
 	#include "config.h"
 #endif
 
+#include <cynara-client.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +36,73 @@ static char *nv(char *s)
 		return s;
 	}
 	return "(null)";
+}
+
+#define SMACK_LABEL_LEN 255
+
+// FIXME : put into commons
+#define ACCESS_TYPE_READ ".read"
+#define ACCESS_TYPE_WRITE ".write"
+
+ssize_t smack_label_from_self(char **label)
+{
+	char *result;
+	int fd;
+	int ret;
+
+	result = malloc0(SMACK_LABEL_LEN + 1);
+	if (result == NULL)
+		return -1;
+
+	fd = open("/proc/self/attr/current", O_RDONLY);
+	if (fd < 0) {
+		free(result);
+		return -1;
+	}
+
+	ret = read(fd, result, SMACK_LABEL_LEN);
+	close(fd);
+	if (ret < 0) {
+		free(result);
+		return -1;
+	}
+
+	*label = result;
+	return ret;
+}
+
+bool buxton_cynara_check(BuxtonString dlabel, char* access_type) {
+	struct cynara *p_cynara;
+	if (cynara_initialize(&p_cynara, NULL) != CYNARA_API_SUCCESS)
+		return false;
+	char *privilege = NULL;
+	char *client = NULL;
+	struct passwd *pwd;
+
+	if (dlabel.value == NULL)
+		return true;
+
+	if (smack_label_from_self(&client) == -1)
+		return false;
+
+	pwd = getpwuid(getuid());
+	if (pwd == NULL)
+		return false;
+
+	privilege = malloc0(dlabel.length + strlen(".read") + 1);
+	if (!privilege)
+		return false;
+
+	if (snprintf(privilege, dlabel.length + strlen(".read"), "%s%s", dlabel.value, ".read") < 0) {
+		free(privilege);
+		free(client);
+		return false;
+	}
+
+	if (cynara_check(p_cynara, client, "", pwd->pw_name, privilege) != CYNARA_API_ACCESS_ALLOWED) {
+		return false;
+	}
+	return true;
 }
 
 bool cli_check_availability(__attribute__((unused)) BuxtonControl *control,
@@ -98,6 +168,19 @@ bool cli_set_label(BuxtonControl *control, BuxtonDataType type,
 	}
 
 	if (control->client.direct) {
+		BuxtonData ddata;
+		BuxtonString dlabel;
+
+		ddata.type = BUXTON_TYPE_UNSET;
+		dlabel.value = NULL;
+		ret = buxton_direct_get_value_for_layer(control, key,&ddata, &dlabel);
+		if (ddata.type == BUXTON_TYPE_STRING) {
+			free(ddata.store.d_string.value);
+		}
+		if (!buxton_cynara_check(dlabel, ACCESS_TYPE_WRITE)) {
+			ret = false;
+			goto finish;
+		}
 		ret = buxton_direct_set_label(control, (_BuxtonKey *)key, &label);
 	} else {
 		ret = !buxton_set_label(&control->client, key, label.value,
@@ -110,6 +193,7 @@ bool cli_set_label(BuxtonControl *control, BuxtonDataType type,
 		       two, nv(name), one);
 		free(name);
 	}
+finish:
 	buxton_key_free(key);
 	return ret;
 }
@@ -153,7 +237,20 @@ bool cli_remove_group(BuxtonControl *control, BuxtonDataType type,
 	}
 
 	if (control->client.direct) {
-		ret = buxton_direct_remove_group(control, (_BuxtonKey *)key, NULL);
+		BuxtonData ddata;
+		BuxtonString dlabel;
+
+		ddata.type = BUXTON_TYPE_UNSET;
+		dlabel.value = NULL;
+		ret = buxton_direct_get_value_for_layer(control, key, &ddata, &dlabel);
+		if (ddata.type == BUXTON_TYPE_STRING) {
+			free(ddata.store.d_string.value);
+		}
+		if (!buxton_cynara_check(dlabel, ACCESS_TYPE_WRITE)) {
+			ret = false;
+			goto finish;
+		}
+		ret = buxton_direct_remove_group(control, (_BuxtonKey *)key);
 	} else {
 		ret = !buxton_remove_group(&control->client, key, NULL, NULL, true);
 	}
@@ -164,6 +261,8 @@ bool cli_remove_group(BuxtonControl *control, BuxtonDataType type,
 		       nv(group), one);
 		free(group);
 	}
+
+finish:
 	buxton_key_free(key);
 	return ret;
 }
@@ -194,7 +293,6 @@ bool cli_get_label(BuxtonControl *control, BuxtonDataType type,
 	char *group = two;
 	char *name = three;
 
-
 	BuxtonData ddata;
 	BuxtonString dlabel;
 	bool ret = false;
@@ -211,11 +309,13 @@ bool cli_get_label(BuxtonControl *control, BuxtonDataType type,
 	if (control->client.direct) {
 		ddata.type = BUXTON_TYPE_UNSET;
 		dlabel.value = NULL;
-		ret = buxton_direct_get_value_for_layer(control, key,
-							&ddata, &dlabel,
-							NULL);
+		ret = buxton_direct_get_value_for_layer(control, key, &ddata, &dlabel);
 		if (ddata.type == BUXTON_TYPE_STRING) {
 			free(ddata.store.d_string.value);
+		}
+
+		if (buxton_cynara_check(dlabel, ACCESS_TYPE_READ)) {
+			return false;
 		}
 		label = dlabel.value;
 	} else {
@@ -241,12 +341,25 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 	BuxtonString value;
 	BuxtonKey key;
 	BuxtonData set;
+	BuxtonString dlabel;
+	BuxtonData ddata;
 	bool ret = false;
 
 	memzero((void*)&set, sizeof(BuxtonData));
 	key = buxton_key_create(two, three, one, type);
 	if (!key) {
 		return ret;
+	}
+
+	ddata.type = BUXTON_TYPE_UNSET;
+	dlabel.value = NULL;
+	ret = buxton_direct_get_value_for_layer(control, key, &ddata, &dlabel);
+	if (ddata.type == BUXTON_TYPE_STRING) {
+		free(ddata.store.d_string.value);
+	}
+	if (!buxton_cynara_check(dlabel, ACCESS_TYPE_WRITE)) {
+		free_buxton_key(key);
+		return false;
 	}
 
 	value.value = four;
@@ -511,9 +624,10 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 
 	if (three != NULL) {
 		if (control->client.direct) {
-			ret = buxton_direct_get_value_for_layer(control, key,
-								&get, &dlabel,
-								NULL);
+			ret = buxton_direct_get_value_for_layer(control, key, &get, &dlabel);
+			if (!buxton_cynara_check(dlabel, ACCESS_TYPE_READ)) {
+				return false;
+			}
 		} else {
 			ret = buxton_get_value(&control->client,
 						      key,
@@ -529,7 +643,10 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 		}
 	} else {
 		if (control->client.direct) {
-			ret_val = buxton_direct_get_value(control, key, &get, &dlabel, NULL);
+			ret_val = buxton_direct_get_value(control, key, &get, &dlabel);
+			if (!buxton_cynara_check(dlabel, ACCESS_TYPE_READ)) {
+				return false;
+			}
 			if (ret_val == 0) {
 				ret = true;
 			}

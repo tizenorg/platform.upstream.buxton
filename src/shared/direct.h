@@ -53,36 +53,34 @@ void buxton_direct_close(BuxtonControl *control);
  * Set a value within Buxton
  * @param control An initialized control structure
  * @param key The key struct
- * @param label A BuxtonString containing the label to set
+ * @param security A BuxtonString containing the permission to set
  * @return A boolean value, indicating success of the operation
  */
 bool buxton_direct_set_label(BuxtonControl *control,
 			     _BuxtonKey *key,
-			     BuxtonString *label)
+			     BuxtonString *security)
 	__attribute__((warn_unused_result));
 
 /**
  * Create a group within Buxton
  * @param control An initialized control structure
  * @param key The key struct with group and layer members initialized
- * @param label The Smack label of the client
+ * @param security The permission of the client
  * @return A boolean value, indicating success of the operation
  */
 bool buxton_direct_create_group(BuxtonControl *control,
 				_BuxtonKey *key,
-				BuxtonString *label)
+				BuxtonString *security)
 	__attribute__((warn_unused_result));
 
 /**
  * Remove a group within Buxton
  * @param control An initialized control structure
  * @param key The key struct with group and layer members initialized
- * @param client_label The Smack label of the client
  * @return A boolean value, indicating success of the operation
  */
 bool buxton_direct_remove_group(BuxtonControl *control,
-				_BuxtonKey *key,
-				BuxtonString *client_label)
+				_BuxtonKey *key)
 	__attribute__((warn_unused_result));
 
 /**
@@ -90,13 +88,13 @@ bool buxton_direct_remove_group(BuxtonControl *control,
  * @param control An initialized control structure
  * @param key The key struct
  * @param data A struct containing the data to set
- * @param label The Smack label for the client
+ * @param security The permission for the client
  * @return A boolean value, indicating success of the operation
  */
 bool buxton_direct_set_value(BuxtonControl *control,
 			     _BuxtonKey *key,
 			     BuxtonData *data,
-			     BuxtonString *label)
+			     BuxtonString *security)
 	__attribute__((warn_unused_result));
 
 /**
@@ -104,15 +102,13 @@ bool buxton_direct_set_value(BuxtonControl *control,
  * @param control An initialized control structure
  * @param key The key to retrieve
  * @param data An empty BuxtonData, where data is stored
- * @param data_label The Smack label of the data
- * @param client_label The Smack label of the client
+ * @param data_security The permission of the data
  * @return A int32_t value, indicating success of the operation
  */
 int32_t buxton_direct_get_value(BuxtonControl *control,
 			     _BuxtonKey *key,
 			     BuxtonData *data,
-			     BuxtonString *data_label,
-			     BuxtonString *client_label)
+			     BuxtonString *data_security)
 	__attribute__((warn_unused_result));
 
 /**
@@ -120,15 +116,13 @@ int32_t buxton_direct_get_value(BuxtonControl *control,
  * @param control An initialized control structure
  * @param key The key to retrieve
  * @param data An empty BuxtonData, where data is stored
- * @param data_label The Smack label of the data
- * @param client_label The Smack label of the client
+ * @param data_security The permission of the data
  * @return An int value, indicating success of the operation
  */
 int buxton_direct_get_value_for_layer(BuxtonControl *control,
 				       _BuxtonKey *key,
 				       BuxtonData *data,
-				       BuxtonString *data_label,
-				       BuxtonString *client_label)
+				       BuxtonString *data_security)
 	__attribute__((warn_unused_result));
 
 /**
@@ -164,12 +158,12 @@ bool buxton_direct_list_names(BuxtonControl *control,
  * Unset a value by key in the given BuxtonLayer
  * @param control An initialized control structure
  * @param key The key to remove
- * @param label The Smack label of the client
+ * @param security The permission of the client
  * @return a boolean value, indicating success of the operation
  */
 bool buxton_direct_unset_value(BuxtonControl *control,
 			       _BuxtonKey *key,
-			       BuxtonString *label)
+			       BuxtonString *security)
 	__attribute__((warn_unused_result));
 
 /*

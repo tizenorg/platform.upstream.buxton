@@ -20,28 +20,25 @@
 	#include "config.h"
 #endif
 
+#include <cynara-client-async.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 
 #include "buxton.h"
 #include "backend.h"
+#include "common.h"
 #include "hashmap.h"
 #include "list.h"
 #include "protocol.h"
 #include "serialize.h"
 
 /**
- * List for daemon's clients
+ * List for of connected client requests to be handled
  */
-typedef struct client_list_item {
-	LIST_FIELDS(struct client_list_item, item); /**<List type */
-	int fd; /**<File descriptor of connected client */
-	struct ucred cred; /**<Credentials of connected client */
-	BuxtonString *smack_label; /**<Smack label of connected client */
-	uint8_t *data; /**<Data buffer for the client */
-	size_t offset; /**<Current position to write to data buffer */
-	size_t size; /**<Size of the data buffer */
-} client_list_item;
+typedef struct request_list_item {
+	LIST_FIELDS(struct request_list_item, item); /**<List type */
+	BuxtonRequest *request; /**<Request of connected client */
+} request_list_item;
 
 /**
  * Notification registration
@@ -56,14 +53,18 @@ typedef struct BuxtonNotification {
  * Global store of buxtond state
  */
 typedef struct BuxtonDaemon {
+	int cynara_fd;
 	size_t nfds_alloc;
 	size_t accepting_alloc;
 	nfds_t nfds;
 	bool *accepting;
 	struct pollfd *pollfds;
+	struct cynara_async *cynara;
 	client_list_item *client_list;
+	request_list_item *request_list;
 	Hashmap *notify_mapping;
 	Hashmap *client_key_mapping;
+	Hashmap *checkid_request_mapping;
 	BuxtonControl buxton;
 } BuxtonDaemon;
 
@@ -82,15 +83,30 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 	__attribute__((warn_unused_result));
 
 /**
- * Handle a message within buxtond
- * @param self Reference to BuxtonDaemon
+ * Get message and check permission for client
+ * @param self Reference to BuxtoDaemon
  * @param client Current client
  * @param size Size of the data being handled
+ * @return bool True if message was successfully got
+ */
+bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client, size_t size);
+/**
+ * Handle a message within buxtond
+ * @param self Reference to BuxtonDaemon
+ * @param msg Type of control message
+ * @param msgid Identifier of message
+ * @param key Pointer to key
+ * @param client Current client
+ * @param permitted Was message permitted for client
  * @returns bool True if message was successfully handled
  */
+
 bool buxtond_handle_message(BuxtonDaemon *self,
+			      BuxtonControlMessage msg,
+			      uint32_t msgid,
+			      _BuxtonKey *key,
 			      client_list_item *client,
-			      size_t size)
+			      bool permitted)
 	__attribute__((warn_unused_result));
 
 /**
@@ -253,6 +269,14 @@ void add_pollfd(BuxtonDaemon *self, int fd, short events, bool a);
 void del_pollfd(BuxtonDaemon *self, nfds_t i);
 
 /**
+ * Find index of file descriptor in buxtond pollfds array
+ * @param self buxtond instance being run
+ * @param fd File descriptor to be found in poll list
+ * @return Index of file descriptor in poll list or -1 in case of not found
+ */
+nfds_t find_poll_fd(BuxtonDaemon *self, int fd);
+
+/**
  * Setup a client's smack label
  * @param cl Client to set smack label on
  * @return None
@@ -277,6 +301,34 @@ bool handle_client(BuxtonDaemon *self, client_list_item *cl, nfds_t i)
  */
 void terminate_client(BuxtonDaemon *self, client_list_item *cl, nfds_t i);
 
+/**
+ * Free BuxtonRequest structure
+ * @param request Pointer to BuxtonRequest structure
+ * @return None
+ */
+void free_buxton_request(BuxtonRequest *request);
+
+/**
+ * Cynara status change callback implementation
+ * @param old_fd Old cynara fd, -1 means connecting for first time to cynara
+ * @param new_fd New cynara fd, -1 means disconnecting from cynara
+ * @param status Status on which cynara should be listened to
+ * @param user_status_data User specified data
+ * @return None
+ */
+void buxton_cynara_status_change(int old_fd, int new_fd, cynara_async_status status,
+		void *user_status_data);
+
+/**
+ * Cynara request callback implementation
+ * @param check_id Cynara id of check request, matches id given from cynara_async_create_request
+ * @param cause Cause by which callback was called
+ * @param response ALLOW or DENY, if available
+ * @user_response_data User specified data
+ * @return None
+ */
+void buxton_cynara_response (cynara_check_id check_id, cynara_async_call_cause cause,
+		int response, void *user_response_data);
 /*
  * Editor modelines  -	http://www.wireshark.org/tools/modelines.html
  *

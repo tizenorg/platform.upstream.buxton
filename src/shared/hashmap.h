@@ -44,6 +44,9 @@ typedef _IteratorStruct* Iterator;
 typedef unsigned (*hash_func_t)(const void *p);
 typedef int (*compare_func_t)(const void *a, const void *b);
 
+/* Cynara: This is an ugly workaround for no simple map in buxton */
+unsigned no_hash_func(const void *p) _pure_;
+
 unsigned string_hash_func(const void *p) _pure_;
 int string_compare_func(const void *a, const void *b) _pure_;
 

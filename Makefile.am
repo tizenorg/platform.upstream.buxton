@@ -3,7 +3,10 @@ AM_CFLAGS = -std=gnu99 -fstack-protector -Wall -pedantic \
         -Wstrict-prototypes -Wundef -fno-common \
         -Werror-implicit-function-declaration \
         -Wformat -Wformat-security -Werror=format-security \
-	-Wconversion -Wunreachable-code
+        -Wconversion -Wunreachable-code \
+        -lcynara-client-async \
+        -lcynara-client \
+        -I${includedir}/cynara
 if DEBUG
 AM_CFLAGS += -ggdb3 -O0
 endif
@@ -165,7 +168,9 @@ bin_PROGRAMS = \
 buxtond_SOURCES = \
 	src/core/daemon.c \
 	src/core/daemon.h \
-	src/core/main.c
+	src/core/main.c \
+	src/security/cynara.c \
+	src/security/cynara.h
 
 buxtond_LDADD = \
 	$(SYSTEMD_LIBS) \
@@ -191,8 +196,6 @@ noinst_LTLIBRARIES += \
 	libbuxtonsimple-shared.la
 
 libbuxton_shared_la_SOURCES = \
-	src/security/smack.c \
-	src/security/smack.h \
 	src/shared/backend.c \
 	src/shared/backend.h \
 	src/shared/buxtonarray.c \
@@ -402,7 +405,9 @@ check_buxtond_SOURCES = \
 	test/check_utils.h \
 	src/core/daemon.c \
 	src/core/daemon.h \
-	src/core/main.c
+	src/core/main.c \
+	src/security/cynara.c \
+	src/security/cynara.h
 check_buxtond_CFLAGS = \
 	@CHECK_CFLAGS@ \
 	$(AM_CFLAGS) \
@@ -421,7 +426,9 @@ check_daemon_SOURCES = \
 	test/check_utils.h \
 	src/core/daemon.c \
 	src/core/daemon.h \
-        test/check_daemon.c
+        test/check_daemon.c \
+	src/security/cynara.c \
+	src/security/cynara.h
 check_daemon_CFLAGS = \
 	$(AM_CFLAGS) \
 	@CHECK_CFLAGS@ \
@@ -471,7 +478,9 @@ check_configurator_LDADD = \
 check_buxtonsimple_SOURCES = \
 	test/check_buxtonsimple.c \
 	src/core/daemon.c \
-	src/core/daemon.h
+	src/core/daemon.h \
+	src/security/cynara.c \
+	src/security/cynara.h
 check_buxtonsimple_CFLAGS = \
 	$(AM_CFLAGS) \
 	@CHECK_CFLAGS@ \

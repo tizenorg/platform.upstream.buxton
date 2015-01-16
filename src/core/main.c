@@ -14,6 +14,7 @@
  *
  * This file provides the buxton daemon
  */
+
 #ifdef HAVE_CONFIG_H
     #include "config.h"
 #endif
@@ -37,11 +38,11 @@
 
 #include "buxton.h"
 #include "backend.h"
+#include "cynara.h"
 #include "daemon.h"
 #include "direct.h"
 #include "list.h"
 #include "log.h"
-#include "smack.h"
 #include "util.h"
 #include "configurator.h"
 #include "buxtonlist.h"
@@ -67,7 +68,6 @@ static void print_usage(char *name)
 int main(int argc, char *argv[])
 {
 	int fd;
-	int smackfd = -1;
 	socklen_t addr_len;
 	struct sockaddr_un remote;
 	int descriptors;
@@ -83,6 +83,8 @@ int main(int argc, char *argv[])
 	char *notify_key;
 	BuxtonList *key_list = NULL;
 	uint64_t *client_fd;
+	uint64_t *check_id;
+	BuxtonRequest *request;
 
 	static struct option opts[] = {
 		{ "config-file", 1, NULL, 'c' },
@@ -125,14 +127,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	if (!buxton_cache_smack_rules()) {
-		exit(EXIT_FAILURE);
-	}
-	smackfd = buxton_watch_smack_rules();
-	if (smackfd < 0 && errno) {
-		exit(EXIT_FAILURE);
-	}
-
 	self.nfds_alloc = 0;
 	self.accepting_alloc = 0;
 	self.nfds = 0;
@@ -168,12 +162,26 @@ int main(int argc, char *argv[])
 
 	add_pollfd(&self, sigfd, POLLIN, false);
 
+	/* Set attributes for cynara*/
+	self.cynara_fd = -1;
+	cynara_async *p_cynara;
+	if (cynara_async_initialize(&p_cynara, NULL, buxton_cynara_status_change, &self)
+			!= CYNARA_API_SUCCESS) {
+		exit(EXIT_FAILURE);
+	}
+	self.cynara = p_cynara;
+	/* For keeping track of client related cynara request*/
+	self.checkid_request_mapping = hashmap_new(no_hash_func, uint64_compare_func);
+
 	/* For client notifications */
 	self.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
 	/* For keeping track of keys a client is registered to*/
 	self.client_key_mapping = hashmap_new(uint64_hash_func, uint64_compare_func);
+
 	/* Store a list of connected clients */
 	LIST_HEAD_INIT(client_list_item, self.client_list);
+	/* Store a list of requests ready to be handled*/
+	LIST_HEAD_INIT(request_list_item, self.request_list);
 
 	descriptors = sd_listen_fds(0);
 	if (descriptors < 0) {
@@ -231,11 +239,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (smackfd >= 0) {
-		/* add Smack rule fd to pollfds */
-		add_pollfd(&self, smackfd, POLLIN | POLLPRI, false);
-	}
-
 	buxton_log("%s: Started\n", argv[0]);
 
 	/* Enter loop to accept clients */
@@ -271,7 +274,6 @@ int main(int argc, char *argv[])
 
 		for (nfds_t i = 1; i < self.nfds; i++) {
 			client_list_item *cl = NULL;
-			char discard[256];
 
 			if (self.pollfds[i].revents == 0) {
 				continue;
@@ -279,20 +281,42 @@ int main(int argc, char *argv[])
 
 			if (self.pollfds[i].fd == -1) {
 				/* TODO: Remove client from list  */
+
+				// Remove all pending requests for client
+				request_list_item *iter = NULL;
+				LIST_FOREACH(item, iter, self.request_list) {
+					BuxtonRequest *request = iter->request;
+					if (request->client->fd == self.pollfds[i].fd) {
+						free_buxton_request(request);
+						// FIXME Will it blow?
+						LIST_REMOVE(request_list_item, item, self.request_list, iter);
+					}
+				}
+
+				// Cancel all pending cynara checks for client
+				BuxtonCynaraRequest *cynara_request = NULL;
+				Iterator iter_h = NULL;
+				uint16_t *check_id;
+				check_id = malloc0(sizeof(check_id));
+				if (!check_id)
+					abort();
+				HASHMAP_FOREACH_KEY(cynara_request, check_id, self.checkid_request_mapping, iter_h) {
+					if (cynara_request->request->client->fd == self.pollfds[i].fd) {
+						cynara_async_cancel_request(self.cynara, *check_id);
+					}
+				}
 				buxton_debug("Removing / Closing client for fd %d\n", self.pollfds[i].fd);
 				del_pollfd(&self, i);
 				continue;
 			}
 
-			if (smackfd >= 0) {
-				if (self.pollfds[i].fd == smackfd) {
-					if (!buxton_cache_smack_rules()) {
+			if (self.cynara_fd >= 0) {
+				if (self.pollfds[i].fd == self.cynara_fd) {
+					if (cynara_async_process(self.cynara) != CYNARA_API_SUCCESS) {
+						//TODO maybe we should just try again? Or mark cynara_fd as invalid?
 						exit(EXIT_FAILURE);
 					}
-					buxton_log("Reloaded Smack access rules\n");
-					/* discard inotify data itself */
-					while (read(smackfd, &discard, 256) == 256);
-					continue;
+					buxton_log("Processed cynara events\n");
 				}
 			}
 
@@ -348,9 +372,6 @@ int main(int argc, char *argv[])
 			}
 
 			assert(self.accepting[i] == 0);
-			if (smackfd >= 0) {
-				assert(self.pollfds[i].fd != smackfd);
-			}
 
 			/* handle data on any connection */
 			/* TODO: Replace with hash table lookup */
@@ -363,11 +384,29 @@ int main(int argc, char *argv[])
 			if (handle_client(&self, cl, i)) {
 				leftover_messages = true;
 			}
+			request_list_item *iter = NULL;
+			LIST_FOREACH(item, iter, self.request_list) {
+				BuxtonRequest *request = iter->request;
+				bool permitted = true;
+				if (request->is_key_permitted == BUXTON_DECISION_DENIED ||
+						request->is_group_permitted == BUXTON_DECISION_DENIED)
+					permitted = false;
+				bool ret = buxtond_handle_message(&self, iter->request->type,
+						iter->request->msgid, iter->request->key, iter->request->client, permitted);
+				if (!ret) {
+					nfds_t ind = find_poll_fd(&self, cl->fd);
+					terminate_client(&self, cl, ind);
+				}
+				free_buxton_request(iter->request);
+				// FIXME: will it blow?
+				LIST_REMOVE(request_list_item, item, self.request_list, iter);
+			}
 		}
 	}
 
 	buxton_log("%s: Closing all connections\n", argv[0]);
 
+	cynara_async_finish(self.cynara);
 	if (manual_start) {
 		unlink(buxton_socket());
 	}
@@ -376,6 +415,11 @@ int main(int argc, char *argv[])
 	}
 	for (client_list_item *i = self.client_list; i;) {
 		client_list_item *j = i->item_next;
+		free(i);
+		i = j;
+	}
+	for (request_list_item *i = self.request_list; i;) {
+		request_list_item *j = i->item_next;
 		free(i);
 		i = j;
 	}
@@ -398,6 +442,12 @@ int main(int argc, char *argv[])
 		hashmap_remove(self.client_key_mapping, client_fd);
 		buxton_list_free_all(&key_list);
 		free(client_fd);
+	}
+
+	HASHMAP_FOREACH_KEY(request, check_id, self.checkid_request_mapping, iter) {
+		hashmap_remove(self.checkid_request_mapping, check_id);
+		free_buxton_request(request);
+		free(check_id);
 	}
 	hashmap_free(self.notify_mapping);
 	hashmap_free(self.client_key_mapping);

@@ -25,6 +25,7 @@
 #include "log.h"
 #include "util.h"
 #include "buxtonlist.h"
+#include "cynara.h"
 
 static char *notify_key_name(_BuxtonKey *key)
 {
@@ -215,31 +216,68 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 	return true;
 }
 
-bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t size)
-{
-	BuxtonControlMessage msg;
-	int32_t response;
-	BuxtonData *list = NULL;
-	_cleanup_buxton_data_ BuxtonData *data = NULL;
-	uint16_t i;
-	ssize_t p_count;
-	size_t response_len;
-	BuxtonData response_data, mdata;
-	BuxtonData *value = NULL;
-	_BuxtonKey key = {{0}, {0}, {0}, 0};
-	BuxtonArray *out_list = NULL, *key_list = NULL;
-	_cleanup_free_ uint8_t *response_store = NULL;
-	uid_t uid;
-	bool ret = false;
-	uint32_t msgid = 0;
-	uint32_t n_msgid = 0;
-
+bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client, size_t size) {
 	assert(self);
 	assert(client);
 
+	BuxtonControlMessage msg;
+	BuxtonDataType memo_type;
+	uint32_t msgid = 0;
+	uid_t uid;
+	uint16_t i;
+	ssize_t p_count;
+	BuxtonData *list = NULL;
+	BuxtonData *value = NULL;
+	_BuxtonKey *key = NULL;
+	BuxtonRequest *request  = NULL;
+
+	BuxtonLayer *layer;
+	BuxtonConfig *config;
+
+	_cleanup_buxton_data_ BuxtonData *d = NULL;
+	_cleanup_buxton_data_ BuxtonData *g = NULL;
+	_cleanup_buxton_key_ _BuxtonKey *group = NULL;
+	_cleanup_buxton_string_ BuxtonString *data_privilege = NULL;
+	_cleanup_buxton_string_ BuxtonString *group_privilege = NULL;
+	bool ret = false;
+	bool processRequest = true;
+
+	key = malloc0(sizeof(_BuxtonKey));
+	if (!key) {
+		abort();
+	}
+	group = malloc0(sizeof(_BuxtonKey));
+	if (!group) {
+		abort();
+	}
+
+	request = malloc0(sizeof(BuxtonRequest));
+	if (!request) {
+		abort();
+	}
+
+	g = malloc0(sizeof(BuxtonData));
+	if (!g) {
+		abort();
+	}
+	group_privilege = malloc0(sizeof(BuxtonString));
+	if (!group_privilege) {
+		abort();
+	}
+
+	d = malloc0(sizeof(BuxtonData));
+	if (!d) {
+		abort();
+	}
+	data_privilege = malloc0(sizeof(BuxtonString));
+	if (!data_privilege) {
+		abort();
+	}
+
+	//Get message
 	uid = self->buxton.client.uid;
 	p_count = buxton_deserialize_message((uint8_t*)client->data, &msg, size,
-					     &msgid, &list);
+						 &msgid, &list);
 	if (p_count < 0) {
 		if (errno == ENOMEM) {
 			abort();
@@ -254,49 +292,183 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 		goto end;
 	}
 
-	if (!parse_list(msg, (size_t)p_count, list, &key, &value)) {
+	// Parse message to key
+	if (!parse_list(msg, (size_t)p_count, list, key, &value)) {
 		goto end;
 	}
+
+	// Fill request structure
+	request->client = client;
+	request->type = msg;
+	request->msgid = msgid;
+	request->key = key;
+	request->is_group_permitted = BUXTON_DECISION_NONE;
+	request->is_key_permitted = BUXTON_DECISION_NONE;
+
+	// Getting privilege of group and key
+	/* Groups must be created first, so bail if this key's group doesn't exist */
+	if (!buxton_copy_key_group(key, group)) {
+		abort();
+	}
+
+	ret = buxton_direct_get_value_for_layer(&(self->buxton), group, g, group_privilege);
+	if (ret) {
+		buxton_debug("Error(%d): %s\n", ret, strerror(ret));
+		buxton_debug("Group %s for name %s missing for set value\n", key->group.value, key->name.value);
+		goto end;
+	}
+
+	memo_type = key->type;
+	key->type = BUXTON_TYPE_UNSET;
+	ret = buxton_direct_get_value_for_layer(&(self->buxton), key, d, data_privilege);
+	key->type = memo_type;
+	if (ret == -ENOENT || ret == EINVAL) {
+		// Setting value for nonexisting key
+		// FIXME: What's the beahviour here?
+		goto end;
+	}
+
+	// FIXME if key points to group, then we will get privilege twice
+	if (strcmp(data_privilege->value, group_privilege->value) == 0) {
+		free_buxton_string(data_privilege);
+		data_privilege = NULL;
+	}
+
+	switch (msg) {
+	case BUXTON_CONTROL_SET:
+	case BUXTON_CONTROL_SET_LABEL:
+	case BUXTON_CONTROL_UNSET:
+
+		processRequest = buxton_check_cynara_access(self, client->smack_label,
+				group_privilege, data_privilege, request, ACCESS_WRITE);
+		break;
+	case BUXTON_CONTROL_GET:
+	case BUXTON_CONTROL_GET_LABEL:
+		processRequest = buxton_check_cynara_access(self, client->smack_label,
+				group_privilege, data_privilege, request, ACCESS_READ);
+		break;
+
+	case BUXTON_CONTROL_REMOVE_GROUP:
+			// remove group needs checking of layer!
+		config = &self->buxton.config;
+
+		if ((layer = hashmap_get(config->layers, key->layer.value)) == NULL) {
+			// FIXME: what should we do? Should client get error?
+			goto end;
+		}
+
+		if (layer->readonly) {
+			buxton_debug("Read-ony layer!\n");
+			// FIXME: what should we do? Should client get error?
+			goto end;
+		}
+		if (layer->type == LAYER_USER) {
+			processRequest = buxton_check_cynara_access(self, client->smack_label,
+					group_privilege, NULL, request, ACCESS_WRITE);
+		} else {
+			processRequest = true;
+		}
+		break;
+	case BUXTON_CONTROL_CREATE_GROUP:
+	case BUXTON_CONTROL_LIST:
+	case BUXTON_CONTROL_LIST_NAMES:
+	case BUXTON_CONTROL_NOTIFY:
+	case BUXTON_CONTROL_UNNOTIFY:
+	default:
+		processRequest = true;
+		break;
+	}
+	ret = true;
+	if (processRequest) {
+		// Request can be already process, so add it to list of pending requests
+		request_list_item *rl = NULL;
+		rl = malloc0(sizeof(request_list_item));
+		if (!rl)
+			abort();
+		rl->request = request;
+		LIST_PREPEND(request_list_item, item, self->request_list, rl);
+	}
+end:
+	/* Restore our own UID */
+	self->buxton.client.uid = uid;
+
+	if (list) {
+		for (i=0; i < p_count; i++) {
+			if (list[i].type == BUXTON_TYPE_STRING) {
+				free(list[i].store.d_string.value);
+			}
+		}
+		free(list);
+	}
+	return ret;
+}
+
+bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32_t msgid,
+				_BuxtonKey *key, client_list_item *client, bool permitted)
+{
+	_cleanup_buxton_data_ BuxtonData *data = NULL;
+	int32_t response = -1;
+	uint16_t i;
+	size_t response_len;
+	BuxtonData response_data, mdata;
+	BuxtonData *value = NULL;
+	BuxtonArray *out_list = NULL, *key_list = NULL;
+	_cleanup_free_ uint8_t *response_store = NULL;
+	uid_t uid;
+	bool ret = false;
+	uint32_t n_msgid = 0;
+
+	assert(self);
+	assert(client);
+
+	uid = self->buxton.client.uid;
 
 	/* use internal function from buxtond */
 	switch (msg) {
 	case BUXTON_CONTROL_SET:
-		set_value(self, client, &key, value, &response);
+		if (permitted)
+			set_value(self, client, key, value, &response);
 		break;
 	case BUXTON_CONTROL_SET_LABEL:
-		set_label(self, client, &key, value, &response);
+		if (permitted)
+			set_label(self, client, key, value, &response);
 		break;
 	case BUXTON_CONTROL_CREATE_GROUP:
-		create_group(self, client, &key, &response);
+		create_group(self, client, key, &response);
 		break;
 	case BUXTON_CONTROL_REMOVE_GROUP:
-		remove_group(self, client, &key, &response);
+		if (permitted)
+			remove_group(self, client, key, &response);
 		break;
 	case BUXTON_CONTROL_GET:
-		data = get_value(self, client, &key, &response);
+		if (permitted)
+			data = get_value(self, client, key, &response);
 		break;
 	case BUXTON_CONTROL_GET_LABEL:
-		data = get_label(self, client, &key, &response);
+		if (permitted)
+			data = get_label(self, client, key, &response);
 		break;
 	case BUXTON_CONTROL_UNSET:
-		unset_value(self, client, &key, &response);
+		if (permitted)
+			unset_value(self, client, key, &response);
 		break;
 	case BUXTON_CONTROL_LIST:
 		key_list = list_keys(self, client, &value->store.d_string,
 				     &response);
 		break;
 	case BUXTON_CONTROL_LIST_NAMES:
-		key_list = list_names(self, client, &key, &response);
+		key_list = list_names(self, client, key, &response);
 		break;
 	case BUXTON_CONTROL_NOTIFY:
-		register_notification(self, client, &key, msgid, &response);
+		register_notification(self, client, key, msgid, &response);
 		break;
 	case BUXTON_CONTROL_UNNOTIFY:
-		n_msgid = unregister_notification(self, client, &key, &response);
+		n_msgid = unregister_notification(self, client, key, &response);
 		break;
 	default:
 		goto end;
 	}
+
 	/* Set a response code */
 	response_data.type = BUXTON_TYPE_INT32;
 	response_data.store.d_int32 = response;
@@ -478,9 +650,9 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	ret = _write(client->fd, response_store, response_len);
 	if (ret) {
 		if (msg == BUXTON_CONTROL_SET && response == 0) {
-			buxtond_notify_clients(self, client, &key, value);
+			buxtond_notify_clients(self, client, key, value);
 		} else if (msg == BUXTON_CONTROL_UNSET && response == 0) {
-			buxtond_notify_clients(self, client, &key, NULL);
+			buxtond_notify_clients(self, client, key, NULL);
 		}
 	}
 
@@ -489,14 +661,6 @@ end:
 	self->buxton.client.uid = uid;
 	if (out_list) {
 		buxton_array_free(&out_list, NULL);
-	}
-	if (list) {
-		for (i=0; i < p_count; i++) {
-			if (list[i].type == BUXTON_TYPE_STRING) {
-				free(list[i].store.d_string.value);
-			}
-		}
-		free(list);
 	}
 	return ret;
 }
@@ -646,7 +810,8 @@ void set_value(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 
 	self->buxton.client.uid = client->cred.uid;
 
-	if (!buxton_direct_set_value(&self->buxton, key, value, client->smack_label)) {
+	// FIXME : not setting privilege as client smack label
+	if (!buxton_direct_set_value(&self->buxton, key, value, NULL)) {
 		return;
 	}
 
@@ -699,7 +864,8 @@ void create_group(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 	self->buxton.client.uid = client->cred.uid;
 
 	/* Use internal library to create group */
-	if (!buxton_direct_create_group(&self->buxton, key, client->smack_label)) {
+	// FIXME : not setting privilege as client smack label
+	if (!buxton_direct_create_group(&self->buxton, key, NULL)) {
 		return;
 	}
 
@@ -724,7 +890,8 @@ void remove_group(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 	self->buxton.client.uid = client->cred.uid;
 
 	/* Use internal library to create group */
-	if (!buxton_direct_remove_group(&self->buxton, key, client->smack_label)) {
+	// FIXME : not setting privilege as client smack label
+	if (!buxton_direct_remove_group(&self->buxton, key)) {
 		return;
 	}
 
@@ -749,7 +916,8 @@ void unset_value(BuxtonDaemon *self, client_list_item *client,
 
 	/* Use internal library to unset value */
 	self->buxton.client.uid = client->cred.uid;
-	if (!buxton_direct_unset_value(&self->buxton, key, client->smack_label)) {
+	// FIXME : not setting privilege as client smack label
+	if (!buxton_direct_unset_value(&self->buxton, key, NULL)) {
 		return;
 	}
 
@@ -786,8 +954,8 @@ BuxtonData *get_value(BuxtonDaemon *self, client_list_item *client,
 			     key->name.value);
 	}
 	self->buxton.client.uid = client->cred.uid;
-	ret = buxton_direct_get_value(&self->buxton, key, data, &label,
-				      client->smack_label);
+	// FIXME : not setting privilege as client smack label
+	ret = buxton_direct_get_value(&self->buxton, key, data, &label);
 	if (ret) {
 		goto fail;
 	}
@@ -832,8 +1000,8 @@ BuxtonData *get_label(BuxtonDaemon *self, client_list_item *client,
 
 	self->buxton.client.uid = client->cred.uid;
 
-	ret = buxton_direct_get_value(&self->buxton, key, data, &label,
-				      client->smack_label);
+	// FIXME : not setting privilege as client smack label
+	ret = buxton_direct_get_value(&self->buxton, key, data, &label);
 	if (ret) {
 		goto fail;
 	}
@@ -1154,6 +1322,14 @@ void add_pollfd(BuxtonDaemon *self, int fd, short events, bool a)
 	buxton_debug("Added fd %d to our poll list (accepting=%d)\n", fd, a);
 }
 
+static void del_poll_by_fd(BuxtonDaemon *self, int fd) {
+	assert(self);
+	nfds_t i = find_poll_fd(self, fd);
+	if (i == -1)
+		abort();
+	del_pollfd(self, i);
+}
+
 void del_pollfd(BuxtonDaemon *self, nfds_t i)
 {
 	assert(self);
@@ -1177,6 +1353,14 @@ void del_pollfd(BuxtonDaemon *self, nfds_t i)
 			(size_t)(self->nfds - i - 1) * sizeof(bool));
 	}
 	self->nfds--;
+}
+
+nfds_t find_poll_fd(BuxtonDaemon *self, int fd) {
+	nfds_t i;
+	for (i = 0; i < self->nfds; i++)
+		if (self->pollfds[i].fd == fd)
+			return i;
+	return -1;
 }
 
 void handle_smack_label(client_list_item *cl)
@@ -1300,7 +1484,7 @@ bool handle_client(BuxtonDaemon *self, client_list_item *cl, nfds_t i)
 			buxton_log("Somehow read more bytes than from client requested\n");
 			abort();
 		}
-		if (!buxtond_handle_message(self, cl, cl->size)) {
+		if (!buxtond_get_and_check_message(self, cl, cl->size)) {
 			buxton_log("Communication failed with client %d\n", cl->fd);
 			goto terminate;
 		}
@@ -1392,6 +1576,105 @@ void terminate_client(BuxtonDaemon *self, client_list_item *cl, nfds_t i)
 	LIST_REMOVE(client_list_item, item, self->client_list, cl);
 	free(cl);
 	cl = NULL;
+}
+
+void free_buxton_request(BuxtonRequest *request) {
+	request->client = NULL;
+	free_buxton_key(request->key);
+	free(request);
+}
+
+static short cynara_to_poll_status(cynara_async_status status) {
+	switch(status) {
+	case CYNARA_STATUS_FOR_READ:
+		return POLLIN;
+	case CYNARA_STATUS_FOR_RW:
+		return POLLOUT | POLLIN;
+	default:
+		return POLLRDHUP;
+	}
+}
+
+void buxton_cynara_status_change (int old_fd, int new_fd, cynara_async_status status,
+		void *user_status_data) {
+	BuxtonDaemon *self = (BuxtonDaemon *)user_status_data;
+	if (old_fd == -1) {
+		/* We are connecting to cynara the first time*/
+		add_pollfd(self, new_fd, cynara_to_poll_status(status), false);
+		self->cynara_fd = new_fd;
+	} else if (new_fd == -1) {
+		/* We are disconnecting from cynara*/
+		del_poll_by_fd(self, old_fd);
+		self->cynara_fd = -1;
+	} else {
+		/* Event changed or cynara reconnected*/
+		del_poll_by_fd(self, old_fd);
+		add_pollfd(self, new_fd, cynara_to_poll_status(status), false);
+		self->cynara_fd = new_fd;
+	}
+}
+
+static void set_decision(BuxtonCynaraCheckType type, BuxtonRequest *request, bool allowed) {
+	switch(type) {
+	case BUXTON_CYNARA_CHECK_GROUP:
+		request->is_group_permitted = allowed ? BUXTON_DECISION_GRANTED : BUXTON_DECISION_DENIED;
+		break;
+	case BUXTON_CYNARA_CHECK_KEY:
+		request->is_key_permitted = allowed ? BUXTON_DECISION_GRANTED : BUXTON_DECISION_DENIED;
+		break;
+	}
+}
+
+void buxton_cynara_response (cynara_check_id check_id, cynara_async_call_cause cause,
+		int response, void *user_response_data) {
+	BuxtonDaemon *self = (BuxtonDaemon *)user_response_data;
+	BuxtonCynaraRequest *cynara_request = NULL;
+	BuxtonRequest *request;
+
+	if ((cynara_request = hashmap_get(self->checkid_request_mapping, &check_id)) == NULL) {
+		return;
+	}
+
+	request = cynara_request->request;
+
+	switch(cause) {
+	case CYNARA_CALL_CAUSE_ANSWER:
+		set_decision(cynara_request->type, request, response == CYNARA_API_ACCESS_ALLOWED);
+		break;
+	case CYNARA_CALL_CAUSE_SERVICE_NOT_AVAILABLE:
+		set_decision(cynara_request->type, request, false);
+		break;
+	case CYNARA_CALL_CAUSE_CANCEL:
+	case CYNARA_CALL_CAUSE_FINISH:
+		hashmap_remove(self->checkid_request_mapping, &check_id);
+		if (cynara_request->type == BUXTON_CYNARA_CHECK_GROUP)
+			free_buxton_request(cynara_request->request);
+		free(cynara_request);
+		break;
+
+	default: // This should not happened
+	    set_decision(cynara_request->type, request, false);
+	    break;
+	}
+	/* Permission decision for group and key is set if required */
+	if (request->is_group_permitted != BUXTON_DECISION_NONE &&
+	    request->is_group_permitted != BUXTON_DECISION_REQUIRED &&
+	    request->is_key_permitted != BUXTON_DECISION_NONE &&
+	    request->is_key_permitted != BUXTON_DECISION_REQUIRED) {
+		request_list_item *rl;
+		rl = malloc0(sizeof(request_list_item));
+		if (!rl) {
+			abort();
+		}
+		LIST_INIT(request_list_item, item, rl);
+		rl->request = request;
+		/* Buxton lacks appending to the list */
+		LIST_PREPEND(request_list_item, item, self->request_list, rl);
+	}
+	free(cynara_request);
+	hashmap_remove(self->checkid_request_mapping, &check_id);
+
+
 }
 
 /*
