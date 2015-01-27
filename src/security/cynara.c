@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "cynara.h"
+#include "log.h"
 #include "util.h"
 
 /**
@@ -48,8 +49,8 @@ static char* combine_privilege(BuxtonString *permission, BuxtonKeyAccessType req
     privilege = malloc0(permission->length +  access_size + 1);
     if (!privilege)
         return NULL;
-    memcpy(privilege, permission->value, permission->length);
-    memcpy(&(privilege[permission->length]), access_type, access_size);
+    memcpy(privilege, permission->value, strlen(permission->value));
+    memcpy(privilege + strlen(permission->value), access_type, access_size);
 
     return privilege;
 }
@@ -66,10 +67,18 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 	struct passwd *pwd;
 	char *key_privilege_access = NULL;
 	char *group_privilege_access = NULL;
-	cynara_check_id check_id_key;
-	cynara_check_id check_id_group;
+	cynara_check_id *check_id_key;
+	cynara_check_id *check_id_group;
 	BuxtonCynaraRequest *cynara_key = NULL;
 	BuxtonCynaraRequest *cynara_group = NULL;
+
+	check_id_key = malloc0(sizeof(cynara_check_id));
+	if (!check_id_key)
+		abort();
+
+	check_id_group = malloc0(sizeof(cynara_check_id));
+	if (!check_id_group)
+		abort();
 
 	request->is_group_permitted = BUXTON_DECISION_REQUIRED;
 	if (data_privilege != NULL) {
@@ -92,8 +101,9 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 		//Combine permission with access type
 		key_privilege_access = combine_privilege(data_privilege, access);
 		if (!key_privilege_access) {
-			request->is_group_permitted = BUXTON_DECISION_DENIED;
+			request->is_key_permitted = BUXTON_DECISION_DENIED;
 		}
+		buxton_debug("Cynara cache check for: client : %s, user: %s, privilege: %s\n", client->value, pwd->pw_name, key_privilege_access);
 
 		// Pass empty session, as cynara doesn't allow null one
 		// FIXME: session probably should be a global setting
@@ -120,10 +130,11 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 
 	ret = cynara_async_check_cache(self->cynara, (const char *) client->value, "",
 			 pwd->pw_name, group_privilege_access);
-
+	buxton_debug("Cynara cache check for: client : %s, user: %s, privilege: %s\n", client->value, pwd->pw_name, group_privilege_access);
 	// Check if result has been found in cache or if error has occurred
-	if(CYNARA_API_ACCESS_ALLOWED == ret)
+	if(CYNARA_API_ACCESS_ALLOWED == ret) {
 		request->is_group_permitted = BUXTON_DECISION_GRANTED;
+	}
 	else if (CYNARA_API_ACCESS_DENIED == ret) {
 		request->is_group_permitted = BUXTON_DECISION_DENIED;
 		goto finish;
@@ -136,7 +147,7 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 	if (request->is_key_permitted == BUXTON_DECISION_REQUIRED) {
 		ret = cynara_async_create_request(self->cynara, (const char *) client->value,
 				"", pwd->pw_name, key_privilege_access,
-				&check_id_key, &buxton_cynara_response,
+				check_id_key, &buxton_cynara_response,
 				self);
 		if (ret != CYNARA_API_SUCCESS) {
 			// FIXME: What about CYNARA_API_MAX_PENDING_REQUESTS?
@@ -147,19 +158,22 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 		if (!cynara_key) {
 			abort();
 		}
+		buxton_debug("Asking cynara with check_id: %d\n", *check_id_key);
 		cynara_key->type = BUXTON_CYNARA_CHECK_KEY;
 		cynara_key->request = request;
-		hashmap_put(self->checkid_request_mapping, &check_id_group, cynara_group);
+		hashmap_put(self->checkid_request_mapping, check_id_key, cynara_group);
 	}
 	// Group is required and key wasn't denied
 	if (request->is_group_permitted == BUXTON_DECISION_REQUIRED) {
+		buxton_debug("group still required\n");
 		ret = cynara_async_create_request(self->cynara, (const char *)client->value,
 				"", pwd->pw_name, group_privilege_access,
-				&check_id_group, &buxton_cynara_response,
+				check_id_group, &buxton_cynara_response,
 				self);
 		if (ret != CYNARA_API_SUCCESS) {
 			// FIXME: What about CYNARA_API_MAX_PENDING_REQUESTS?
 			// FIXME: Cancel key check request (if sent), because we failed here
+			buxton_debug("cynara_async_create_request returned error: %d\n", ret);
 			request->is_group_permitted = BUXTON_DECISION_DENIED;
 			goto finish;
 		}
@@ -167,9 +181,10 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 		if (!cynara_group) {
 			abort();
 		}
+		buxton_debug("Asking cynara with check_id: %d\n", *check_id_group);
 		cynara_group->type = BUXTON_CYNARA_CHECK_GROUP;
 		cynara_group->request = request;
-		hashmap_put(self->checkid_request_mapping, &check_id_key, cynara_key);
+		hashmap_put(self->checkid_request_mapping, check_id_group, cynara_group);
 	}
 
 finish:

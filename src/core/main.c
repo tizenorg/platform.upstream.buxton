@@ -83,8 +83,9 @@ int main(int argc, char *argv[])
 	char *notify_key;
 	BuxtonList *key_list = NULL;
 	uint64_t *client_fd;
-	uint64_t *check_id;
+	cynara_check_id *check_id;
 	BuxtonRequest *request;
+	BuxtonCynaraRequest *cynara_request = NULL;
 
 	static struct option opts[] = {
 		{ "config-file", 1, NULL, 'c' },
@@ -105,11 +106,11 @@ int main(int argc, char *argv[])
 		case 'c':
 			ret = stat(optarg, &st);
 			if (ret == -1) {
-				buxton_log("Invalid configuration file path\n");
+				buxton_debug("Invalid configuration file path\n");
 				exit(EXIT_FAILURE);
 			} else {
 				if (st.st_mode & S_IFDIR) {
-					buxton_log("Configuration file given is a directory\n");
+					buxton_debug("Configuration file given is a directory\n");
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -171,7 +172,7 @@ int main(int argc, char *argv[])
 	}
 	self.cynara = p_cynara;
 	/* For keeping track of client related cynara request*/
-	self.checkid_request_mapping = hashmap_new(no_hash_func, uint64_compare_func);
+	self.checkid_request_mapping = hashmap_new(no_hash_func, uint16_compare_func);
 
 	/* For client notifications */
 	self.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -185,7 +186,7 @@ int main(int argc, char *argv[])
 
 	descriptors = sd_listen_fds(0);
 	if (descriptors < 0) {
-		buxton_log("sd_listen_fds: %m\n");
+		buxton_debug("sd_listen_fds: %m\n");
 		exit(EXIT_FAILURE);
 	} else if (descriptors == 0) {
 		/* Manual invocation */
@@ -197,7 +198,7 @@ int main(int argc, char *argv[])
 
 		fd = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (fd < 0) {
-			buxton_log("socket(): %m\n");
+			buxton_debug("socket(): %m\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -212,14 +213,14 @@ int main(int argc, char *argv[])
 		}
 
 		if (bind(fd, &sa.sa, sizeof(sa)) < 0) {
-			buxton_log("bind(): %m\n");
+			buxton_debug("bind(): %m\n");
 			exit(EXIT_FAILURE);
 		}
 
 		chmod(sa.un.sun_path, 0666);
 
 		if (listen(fd, SOMAXCONN) < 0) {
-			buxton_log("listen(): %m\n");
+			buxton_debug("listen(): %m\n");
 			exit(EXIT_FAILURE);
 		}
 		add_pollfd(&self, fd, POLLIN | POLLPRI, true);
@@ -239,14 +240,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	buxton_log("%s: Started\n", argv[0]);
+	buxton_debug("%s: Started\n", argv[0]);
 
 	/* Enter loop to accept clients */
 	for (;;) {
 		ret = poll(self.pollfds, self.nfds, leftover_messages ? 0 : -1);
 
 		if (ret < 0) {
-			buxton_log("poll(): %m\n");
+			buxton_debug("poll(): %m\n");
 			break;
 		}
 		if (ret == 0) {
@@ -274,6 +275,7 @@ int main(int argc, char *argv[])
 
 		for (nfds_t i = 1; i < self.nfds; i++) {
 			client_list_item *cl = NULL;
+			request_list_item *iter = NULL;
 
 			if (self.pollfds[i].revents == 0) {
 				continue;
@@ -296,7 +298,6 @@ int main(int argc, char *argv[])
 				// Cancel all pending cynara checks for client
 				BuxtonCynaraRequest *cynara_request = NULL;
 				Iterator iter_h = NULL;
-				uint16_t *check_id;
 				check_id = malloc0(sizeof(check_id));
 				if (!check_id)
 					abort();
@@ -305,6 +306,7 @@ int main(int argc, char *argv[])
 						cynara_async_cancel_request(self.cynara, *check_id);
 					}
 				}
+				free(check_id);
 				buxton_debug("Removing / Closing client for fd %d\n", self.pollfds[i].fd);
 				del_pollfd(&self, i);
 				continue;
@@ -316,7 +318,8 @@ int main(int argc, char *argv[])
 						//TODO maybe we should just try again? Or mark cynara_fd as invalid?
 						exit(EXIT_FAILURE);
 					}
-					buxton_log("Processed cynara events\n");
+					buxton_debug("Processed cynara events\n");
+					goto process_requests;
 				}
 			}
 
@@ -329,7 +332,7 @@ int main(int argc, char *argv[])
 
 				if ((fd = accept(self.pollfds[i].fd,
 						 (struct sockaddr *)&remote, &addr_len)) == -1) {
-					buxton_log("accept(): %m\n");
+					buxton_debug("accept(): %m\n");
 					break;
 				}
 
@@ -356,7 +359,7 @@ int main(int argc, char *argv[])
 
 				/* Mark our packets as high prio */
 				if (setsockopt(cl->fd, SOL_SOCKET, SO_PRIORITY, &on, sizeof(on)) == -1) {
-					buxton_log("setsockopt(SO_PRIORITY): %m\n");
+					buxton_debug("setsockopt(SO_PRIORITY): %m\n");
 				}
 
 				/* Set socket recv timeout */
@@ -364,7 +367,7 @@ int main(int argc, char *argv[])
 				tv.tv_usec = 0;
 				if (setsockopt(cl->fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,
 					       sizeof(struct timeval)) == -1) {
-					buxton_log("setsockopt(SO_RCVTIMEO): %m\n");
+					buxton_debug("setsockopt(SO_RCVTIMEO): %m\n");
 				}
 
 				/* check if this is optimal or not */
@@ -384,7 +387,8 @@ int main(int argc, char *argv[])
 			if (handle_client(&self, cl, i)) {
 				leftover_messages = true;
 			}
-			request_list_item *iter = NULL;
+process_requests:
+			buxton_debug("Processing requests\n");
 			LIST_FOREACH(item, iter, self.request_list) {
 				BuxtonRequest *request = iter->request;
 				bool permitted = true;
@@ -392,19 +396,21 @@ int main(int argc, char *argv[])
 						request->is_group_permitted == BUXTON_DECISION_DENIED)
 					permitted = false;
 				bool ret = buxtond_handle_message(&self, iter->request->type,
-						iter->request->msgid, iter->request->key, iter->request->client, permitted);
+						iter->request->msgid, iter->request->key, iter->request->value,
+						iter->request->client, permitted);
 				if (!ret) {
-					nfds_t ind = find_poll_fd(&self, cl->fd);
-					terminate_client(&self, cl, ind);
+					nfds_t ind = find_poll_fd(&self, request->client->fd);
+					terminate_client(&self, request->client, ind);
 				}
 				free_buxton_request(iter->request);
+				iter->request = NULL;
 				// FIXME: will it blow?
 				LIST_REMOVE(request_list_item, item, self.request_list, iter);
 			}
 		}
 	}
 
-	buxton_log("%s: Closing all connections\n", argv[0]);
+	buxton_debug("%s: Closing all connections\n", argv[0]);
 
 	cynara_async_finish(self.cynara);
 	if (manual_start) {
@@ -444,10 +450,11 @@ int main(int argc, char *argv[])
 		free(client_fd);
 	}
 
-	HASHMAP_FOREACH_KEY(request, check_id, self.checkid_request_mapping, iter) {
+	HASHMAP_FOREACH_KEY(cynara_request, check_id, self.checkid_request_mapping, iter) {
 		hashmap_remove(self.checkid_request_mapping, check_id);
-		free_buxton_request(request);
-		free(check_id);
+		if (cynara_request->type == BUXTON_CYNARA_CHECK_GROUP)
+			free_buxton_request(cynara_request->request);
+		free(cynara_request);
 	}
 	hashmap_free(self.notify_mapping);
 	hashmap_free(self.client_key_mapping);

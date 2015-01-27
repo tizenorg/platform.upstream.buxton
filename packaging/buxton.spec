@@ -83,7 +83,7 @@ This package provides development files for BuxtonSimple.
 cp %{SOURCE1001} .
 
 %build
-%configure
+CFLAGS=" -O0 -g -ggdb " %configure
 make %{?_smp_mflags}
 
 %install

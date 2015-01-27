@@ -358,7 +358,6 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		free(ddata.store.d_string.value);
 	}
 	if (!buxton_cynara_check(dlabel, ACCESS_TYPE_WRITE)) {
-		free_buxton_key(key);
 		return false;
 	}
 

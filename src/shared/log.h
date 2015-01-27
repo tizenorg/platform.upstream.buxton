@@ -15,7 +15,7 @@
     #include "config.h"
 #endif
 
-#ifdef DEBUG
+#ifndef DEBUG
 #define buxton_debug(...) do { \
 	(buxton_log("%s():[%d]: ",  __func__, __LINE__), buxton_log(__VA_ARGS__)); \
 } while(0);

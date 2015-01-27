@@ -181,7 +181,7 @@ bool buxton_direct_set_value(BuxtonControl *control,
 	BuxtonLayer *layer;
 	BuxtonConfig *config;
 	// FIXME: in case of privilege, there is no default one
-	BuxtonString default_security = buxton_string_pack("_");
+	BuxtonString default_security = buxton_string_pack("");
 	BuxtonString *l;
 	_cleanup_buxton_data_ BuxtonData *d = NULL;
 	_cleanup_buxton_data_ BuxtonData *g = NULL;

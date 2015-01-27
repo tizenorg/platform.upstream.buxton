@@ -55,6 +55,7 @@ int string_compare_func(const void *a, const void *b) _pure_;
  * suchlike. */
 unsigned trivial_hash_func(const void *p) _const_;
 int trivial_compare_func(const void *a, const void *b) _const_;
+int uint16_compare_func(const void *a, const void *b) _pure_;
 
 unsigned uint64_hash_func(const void *p) _pure_;
 int uint64_compare_func(const void *a, const void *b) _pure_;

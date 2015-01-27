@@ -51,6 +51,7 @@ typedef struct BuxtonRequest {
 	BuxtonControlMessage type; /**<Type of message in the response */
 	uint32_t msgid; /**<Message identifier */
 	_BuxtonKey *key; /**<Key used by client to make the request */
+	BuxtonData *value; /**<Value to set if needed */
 	BuxtonRequestDecision is_group_permitted; /**<Decision about group permission */
 	BuxtonRequestDecision is_key_permitted; /**<Decision about key permission */
 } BuxtonRequest;

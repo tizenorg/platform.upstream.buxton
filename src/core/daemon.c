@@ -219,12 +219,13 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client, size_t size) {
 	assert(self);
 	assert(client);
+	buxton_debug("buxtond_get_and_check_message\n");
 
 	BuxtonControlMessage msg;
 	BuxtonDataType memo_type;
 	uint32_t msgid = 0;
 	uid_t uid;
-	uint16_t i;
+	//uint16_t i;
 	ssize_t p_count;
 	BuxtonData *list = NULL;
 	BuxtonData *value = NULL;
@@ -240,12 +241,13 @@ bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client,
 	_cleanup_buxton_string_ BuxtonString *data_privilege = NULL;
 	_cleanup_buxton_string_ BuxtonString *group_privilege = NULL;
 	bool ret = false;
-	bool processRequest = true;
+	bool waitForCynara = false;
 
 	key = malloc0(sizeof(_BuxtonKey));
 	if (!key) {
 		abort();
 	}
+
 	group = malloc0(sizeof(_BuxtonKey));
 	if (!group) {
 		abort();
@@ -302,36 +304,52 @@ bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client,
 	request->type = msg;
 	request->msgid = msgid;
 	request->key = key;
+	request->value = value;
 	request->is_group_permitted = BUXTON_DECISION_NONE;
 	request->is_key_permitted = BUXTON_DECISION_NONE;
 
-	// Getting privilege of group and key
-	/* Groups must be created first, so bail if this key's group doesn't exist */
-	if (!buxton_copy_key_group(key, group)) {
-		abort();
-	}
+	switch(msg) {
+	case BUXTON_CONTROL_SET:
+	case BUXTON_CONTROL_SET_LABEL:
+	case BUXTON_CONTROL_UNSET:
+	case BUXTON_CONTROL_GET:
+	case BUXTON_CONTROL_GET_LABEL:
+	case BUXTON_CONTROL_REMOVE_GROUP:
+		// Getting privilege of group and key
+		/* Groups must be created first, so bail if this key's group doesn't exist */
+		if (!buxton_copy_key_group(key, group)) {
+			abort();
+		}
 
-	ret = buxton_direct_get_value_for_layer(&(self->buxton), group, g, group_privilege);
-	if (ret) {
-		buxton_debug("Error(%d): %s\n", ret, strerror(ret));
-		buxton_debug("Group %s for name %s missing for set value\n", key->group.value, key->name.value);
-		goto end;
-	}
+		ret = buxton_direct_get_value_for_layer(&(self->buxton), group, g, group_privilege);
+		if (ret) {
+			// FIXME: is passing it to request to process is ok?
+			buxton_debug("Error(%d): %s\n", ret, strerror(ret));
+			buxton_debug("Group %s for name %s missing for set value\n", key->group.value, key->name.value);
+			goto end;
+		}
 
-	memo_type = key->type;
-	key->type = BUXTON_TYPE_UNSET;
-	ret = buxton_direct_get_value_for_layer(&(self->buxton), key, d, data_privilege);
-	key->type = memo_type;
-	if (ret == -ENOENT || ret == EINVAL) {
-		// Setting value for nonexisting key
-		// FIXME: What's the beahviour here?
-		goto end;
-	}
+		memo_type = key->type;
+		key->type = BUXTON_TYPE_UNSET;
+		ret = buxton_direct_get_value_for_layer(&(self->buxton), key, d, data_privilege);
+		key->type = memo_type;
+		if (ret == -ENOENT || ret == EINVAL) {
+			// Setting value for nonexisting key
+			// FIXME: What's the beahviour here?
+			goto end;
+		}
 
-	// FIXME if key points to group, then we will get privilege twice
-	if (strcmp(data_privilege->value, group_privilege->value) == 0) {
-		free_buxton_string(data_privilege);
-		data_privilege = NULL;
+		// FIXME if key points to group, then we will get privilege twice
+		if (!data_privilege->value) {
+			free(data_privilege);
+			data_privilege = NULL;
+		} else if (strcmp(data_privilege->value, group_privilege->value) == 0) {
+			free_buxton_string(&data_privilege);
+			data_privilege = NULL;
+		}
+		break;
+	default:
+		break;
 	}
 
 	switch (msg) {
@@ -339,17 +357,16 @@ bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client,
 	case BUXTON_CONTROL_SET_LABEL:
 	case BUXTON_CONTROL_UNSET:
 
-		processRequest = buxton_check_cynara_access(self, client->smack_label,
+		waitForCynara = buxton_check_cynara_access(self, client->smack_label,
 				group_privilege, data_privilege, request, ACCESS_WRITE);
 		break;
 	case BUXTON_CONTROL_GET:
 	case BUXTON_CONTROL_GET_LABEL:
-		processRequest = buxton_check_cynara_access(self, client->smack_label,
+		waitForCynara = buxton_check_cynara_access(self, client->smack_label,
 				group_privilege, data_privilege, request, ACCESS_READ);
 		break;
 
 	case BUXTON_CONTROL_REMOVE_GROUP:
-			// remove group needs checking of layer!
 		config = &self->buxton.config;
 
 		if ((layer = hashmap_get(config->layers, key->layer.value)) == NULL) {
@@ -363,10 +380,10 @@ bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client,
 			goto end;
 		}
 		if (layer->type == LAYER_USER) {
-			processRequest = buxton_check_cynara_access(self, client->smack_label,
+			waitForCynara = buxton_check_cynara_access(self, client->smack_label,
 					group_privilege, NULL, request, ACCESS_WRITE);
 		} else {
-			processRequest = true;
+			waitForCynara = true;
 		}
 		break;
 	case BUXTON_CONTROL_CREATE_GROUP:
@@ -375,43 +392,47 @@ bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client,
 	case BUXTON_CONTROL_NOTIFY:
 	case BUXTON_CONTROL_UNNOTIFY:
 	default:
-		processRequest = true;
+		waitForCynara = false;
 		break;
 	}
 	ret = true;
-	if (processRequest) {
+
+end:
+	if (!waitForCynara) {
 		// Request can be already process, so add it to list of pending requests
 		request_list_item *rl = NULL;
+		buxton_debug("Adding request to process\n");
 		rl = malloc0(sizeof(request_list_item));
 		if (!rl)
 			abort();
 		rl->request = request;
+		buxton_debug("Key : %p, key group: %s\n", rl->request->key, key->group.value ? key->group.value : "null");
 		LIST_PREPEND(request_list_item, item, self->request_list, rl);
 	}
-end:
+	buxton_debug("Request needs response from cynara\n");
+
 	/* Restore our own UID */
 	self->buxton.client.uid = uid;
 
-	if (list) {
+	/*if (list) {
 		for (i=0; i < p_count; i++) {
 			if (list[i].type == BUXTON_TYPE_STRING) {
 				free(list[i].store.d_string.value);
 			}
 		}
 		free(list);
-	}
+	}*/
 	return ret;
 }
 
 bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32_t msgid,
-				_BuxtonKey *key, client_list_item *client, bool permitted)
+				_BuxtonKey *key, BuxtonData *value, client_list_item *client, bool permitted)
 {
 	_cleanup_buxton_data_ BuxtonData *data = NULL;
 	int32_t response = -1;
 	uint16_t i;
 	size_t response_len;
 	BuxtonData response_data, mdata;
-	BuxtonData *value = NULL;
 	BuxtonArray *out_list = NULL, *key_list = NULL;
 	_cleanup_free_ uint8_t *response_store = NULL;
 	uid_t uid;
@@ -422,6 +443,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 	assert(client);
 
 	uid = self->buxton.client.uid;
+	buxton_debug("Handle client message: %p\n", key);
 
 	/* use internal function from buxtond */
 	switch (msg) {
@@ -491,7 +513,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize set response message\n");
+			buxton_debug("Failed to serialize set response message\n");
 			abort();
 		}
 		break;
@@ -503,7 +525,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize set_label response message\n");
+			buxton_debug("Failed to serialize set_label response message\n");
 			abort();
 		}
 		break;
@@ -515,7 +537,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize create_group response message\n");
+			buxton_debug("Failed to serialize create_group response message\n");
 			abort();
 		}
 		break;
@@ -527,7 +549,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize remove_group response message\n");
+			buxton_debug("Failed to serialize remove_group response message\n");
 			abort();
 		}
 		break;
@@ -542,7 +564,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize get response message\n");
+			buxton_debug("Failed to serialize get response message\n");
 			abort();
 		}
 		break;
@@ -557,7 +579,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize get_label response message\n");
+			buxton_debug("Failed to serialize get_label response message\n");
 			abort();
 		}
 		break;
@@ -569,7 +591,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize unset response message\n");
+			buxton_debug("Failed to serialize unset response message\n");
 			abort();
 		}
 		break;
@@ -589,7 +611,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize list response message\n");
+			buxton_debug("Failed to serialize list response message\n");
 			abort();
 		}
 		break;
@@ -609,7 +631,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize list names response message\n");
+			buxton_debug("Failed to serialize list names response message\n");
 			abort();
 		}
 		break;
@@ -621,7 +643,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize notify response message\n");
+			buxton_debug("Failed to serialize notify response message\n");
 			abort();
 		}
 		break;
@@ -638,7 +660,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, BuxtonControlMessage msg, uint32
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize unnotify response message\n");
+			buxton_debug("Failed to serialize unnotify response message\n");
 			abort();
 		}
 		break;
@@ -740,7 +762,7 @@ void buxtond_notify_clients(BuxtonDaemon *self, client_list_item *client,
 					   sizeof(bool));
 				break;
 			default:
-				buxton_log("Internal state corruption: Notification data type invalid\n");
+				buxton_debug("Internal state corruption: Notification data type invalid\n");
 				abort();
 			}
 		}
@@ -781,7 +803,7 @@ void buxtond_notify_clients(BuxtonDaemon *self, client_list_item *client,
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize notification\n");
+			buxton_debug("Failed to serialize notification\n");
 			abort();
 		}
 		buxton_debug("Notification to %d of key change (%s)\n", nitem->client->fd,
@@ -1281,19 +1303,19 @@ bool identify_client(client_list_item *cl)
 	cmhp = CMSG_FIRSTHDR(&msgh);
 
 	if (cmhp == NULL || cmhp->cmsg_len != CMSG_LEN(sizeof(struct ucred))) {
-		buxton_log("Invalid cmessage header from kernel\n");
+		buxton_debug("Invalid cmessage header from kernel\n");
 		abort();
 	}
 
 	if (cmhp->cmsg_level != SOL_SOCKET || cmhp->cmsg_type != SCM_CREDENTIALS) {
-		buxton_log("Missing credentials on socket\n");
+		buxton_debug("Missing credentials on socket\n");
 		abort();
 	}
 
 	ucredp = (struct ucred *) CMSG_DATA(cmhp);
 
 	if (getsockopt(cl->fd, SOL_SOCKET, SO_PEERCRED, &cl->cred, &len) == -1) {
-		buxton_log("Missing label on socket\n");
+		buxton_debug("Missing label on socket\n");
 		abort();
 	}
 
@@ -1379,7 +1401,7 @@ void handle_smack_label(client_list_item *cl)
 			cl->smack_label = NULL;
 			return;
 		default:
-			buxton_log("getsockopt(): %m\n");
+			buxton_debug("getsockopt(): %m\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -1397,7 +1419,7 @@ void handle_smack_label(client_list_item *cl)
 
 	ret = getsockopt(cl->fd, SOL_SOCKET, SO_PEERSEC, buf, &slabel_len);
 	if (ret < 0) {
-		buxton_log("getsockopt(): %m\n");
+		buxton_debug("getsockopt(): %m\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1481,11 +1503,11 @@ bool handle_client(BuxtonDaemon *self, client_list_item *cl, nfds_t i)
 		if (cl->size > cl->offset) {
 			continue;
 		} else if (cl->size < cl->offset) {
-			buxton_log("Somehow read more bytes than from client requested\n");
+			buxton_debug("Somehow read more bytes than from client requested\n");
 			abort();
 		}
 		if (!buxtond_get_and_check_message(self, cl, cl->size)) {
-			buxton_log("Communication failed with client %d\n", cl->fd);
+			buxton_debug("Communication failed with client %d\n", cl->fd);
 			goto terminate;
 		}
 
@@ -1580,7 +1602,10 @@ void terminate_client(BuxtonDaemon *self, client_list_item *cl, nfds_t i)
 
 void free_buxton_request(BuxtonRequest *request) {
 	request->client = NULL;
-	free_buxton_key(request->key);
+	free_buxton_key(&(request->key));
+	request->key = NULL;
+	if (request->value && request->value->type == BUXTON_TYPE_STRING)
+		free(request->value->store.d_string.value);
 	free(request);
 }
 
@@ -1630,8 +1655,10 @@ void buxton_cynara_response (cynara_check_id check_id, cynara_async_call_cause c
 	BuxtonDaemon *self = (BuxtonDaemon *)user_response_data;
 	BuxtonCynaraRequest *cynara_request = NULL;
 	BuxtonRequest *request;
+	buxton_debug("Got cynara response for %d: %d\n", check_id, response);
 
 	if ((cynara_request = hashmap_get(self->checkid_request_mapping, &check_id)) == NULL) {
+		buxton_debug("No request to cynara found\n");
 		return;
 	}
 
@@ -1639,9 +1666,11 @@ void buxton_cynara_response (cynara_check_id check_id, cynara_async_call_cause c
 
 	switch(cause) {
 	case CYNARA_CALL_CAUSE_ANSWER:
+		buxton_debug("Got answer from cynara\n");
 		set_decision(cynara_request->type, request, response == CYNARA_API_ACCESS_ALLOWED);
 		break;
 	case CYNARA_CALL_CAUSE_SERVICE_NOT_AVAILABLE:
+		buxton_debug("Cynara is not available");
 		set_decision(cynara_request->type, request, false);
 		break;
 	case CYNARA_CALL_CAUSE_CANCEL:
@@ -1656,11 +1685,13 @@ void buxton_cynara_response (cynara_check_id check_id, cynara_async_call_cause c
 	    set_decision(cynara_request->type, request, false);
 	    break;
 	}
+
+	buxton_debug("Is group permitted: %d\n", request->is_group_permitted);
+	buxton_debug("Is key permitted: %d\n", request->is_key_permitted);
 	/* Permission decision for group and key is set if required */
-	if (request->is_group_permitted != BUXTON_DECISION_NONE &&
-	    request->is_group_permitted != BUXTON_DECISION_REQUIRED &&
-	    request->is_key_permitted != BUXTON_DECISION_NONE &&
+	if (request->is_group_permitted != BUXTON_DECISION_REQUIRED &&
 	    request->is_key_permitted != BUXTON_DECISION_REQUIRED) {
+		buxton_debug("Request can be processed\n");
 		request_list_item *rl;
 		rl = malloc0(sizeof(request_list_item));
 		if (!rl) {

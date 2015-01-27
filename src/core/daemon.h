@@ -105,6 +105,7 @@ bool buxtond_handle_message(BuxtonDaemon *self,
 			      BuxtonControlMessage msg,
 			      uint32_t msgid,
 			      _BuxtonKey *key,
+			      BuxtonData *set_value,
 			      client_list_item *client,
 			      bool permitted)
 	__attribute__((warn_unused_result));

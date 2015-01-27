@@ -31,6 +31,7 @@
 #include "util.h"
 #include "hashmap.h"
 #include "macro.h"
+#include "log.h"
 
 #define INITIAL_N_BUCKETS 31
 
@@ -175,6 +176,15 @@ int uint64_compare_func(const void *_a, const void *_b) {
 
         a = *(const uint64_t*) _a;
         b = *(const uint64_t*) _b;
+
+        return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+int uint16_compare_func(const void *_a, const void *_b) {
+        uint16_t a, b;
+
+        a = *(const uint16_t*) _a;
+        b = *(const uint16_t*) _b;
 
         return a < b ? -1 : (a > b ? 1 : 0);
 }
@@ -368,9 +378,10 @@ static struct hashmap_entry *hash_scan(Hashmap *h, unsigned hash, const void *ke
         assert(h);
         assert(hash < h->n_buckets);
 
-        for (e = h->buckets[hash]; e; e = e->bucket_next)
+        for (e = h->buckets[hash]; e; e = e->bucket_next) {
                 if (h->compare_func(e->key, key) == 0)
                         return e;
+        }
 
         return NULL;
 }
