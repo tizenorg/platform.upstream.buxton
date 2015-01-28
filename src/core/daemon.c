@@ -341,7 +341,7 @@ bool buxtond_get_and_check_message(BuxtonDaemon *self, client_list_item *client,
 
 		// FIXME if key points to group, then we will get privilege twice
 		if (!data_privilege->value) {
-			free(data_privilege);
+			free_buxton_string(&data_privilege);
 			data_privilege = NULL;
 		} else if (strcmp(data_privilege->value, group_privilege->value) == 0) {
 			free_buxton_string(&data_privilege);
@@ -1704,7 +1704,6 @@ void buxton_cynara_response (cynara_check_id check_id, cynara_async_call_cause c
 	}
 	free(cynara_request);
 	hashmap_remove(self->checkid_request_mapping, &check_id);
-
 
 }
 

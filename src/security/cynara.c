@@ -55,7 +55,6 @@ static char* combine_privilege(BuxtonString *permission, BuxtonKeyAccessType req
     return privilege;
 }
 
-// This function should return nothing!
 bool buxton_check_cynara_access(BuxtonDaemon *self,
                   BuxtonString *client,
                   BuxtonString *group_privilege,
@@ -145,6 +144,7 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 
 	// Key required but not found in cache and group wasn't denied in cache
 	if (request->is_key_permitted == BUXTON_DECISION_REQUIRED) {
+		buxton_debug("key is required\n");
 		ret = cynara_async_create_request(self->cynara, (const char *) client->value,
 				"", pwd->pw_name, key_privilege_access,
 				check_id_key, &buxton_cynara_response,
@@ -161,7 +161,7 @@ bool buxton_check_cynara_access(BuxtonDaemon *self,
 		buxton_debug("Asking cynara with check_id: %d\n", *check_id_key);
 		cynara_key->type = BUXTON_CYNARA_CHECK_KEY;
 		cynara_key->request = request;
-		hashmap_put(self->checkid_request_mapping, check_id_key, cynara_group);
+		hashmap_put(self->checkid_request_mapping, check_id_key, cynara_key);
 	}
 	// Group is required and key wasn't denied
 	if (request->is_group_permitted == BUXTON_DECISION_REQUIRED) {

@@ -455,6 +455,7 @@ process_requests:
 		if (cynara_request->type == BUXTON_CYNARA_CHECK_GROUP)
 			free_buxton_request(cynara_request->request);
 		free(cynara_request);
+		free(check_id);
 	}
 	hashmap_free(self.notify_mapping);
 	hashmap_free(self.client_key_mapping);
