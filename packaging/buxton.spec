@@ -15,7 +15,11 @@ BuildRequires:  pkgconfig(systemd)
 BuildRequires:  pkgconfig(libsystemd-daemon)
 Requires(post): buxton
 Requires(post): smack
+Requires(post): /usr/bin/getent
 Requires(post): /usr/bin/chown
+Requires(post): /usr/sbin/useradd
+Requires(post): /usr/sbin/groupadd
+Requires(post): /usr/bin/chsmack
 
 %description
 Buxton is a security-enabled configuration management system. It
@@ -92,18 +96,24 @@ install -m 0644 %{SOURCE1} %{buildroot}%{_sysconfdir}/buxton.conf
 
 %post
 /sbin/ldconfig
-#buxtond runs as user buxton, which much be created
-useradd buxton
 
+# the database directory
+dbdir="%{_localstatedir}/lib/buxton"
+
+# buxtond runs as user buxton of group buxton
+# create it on need!
+getent group buxton > /dev/null || groupadd -r buxton
+getent passwd buxton > /dev/null || useradd -r -g buxton -d "${dbdir}" buxton
+
+# create initial databases
 buxtonctl create-db base
 buxtonctl create-db isp
-if [ "$1" -eq 1 ] ; then
-    # The initial DBs will not have the correct labels and
-    # permissions when created in postinstall during image
-    # creation, so we set these file attributes here.
-    chsmack -a System %{_localstatedir}/lib/buxton/*.db
-    chown buxton:buxton %{_localstatedir}/lib/buxton/*.db
-fi
+
+# The initial DBs will not have the correct labels and
+# permissions when created in postinstall during image
+# creation, so we set these file attributes here.
+chown -R buxton:buxton "${dbdir}"
+chsmack -a System "${dbdir}" "${dbdir}"/*.db
 
 %postun -p /sbin/ldconfig
 
