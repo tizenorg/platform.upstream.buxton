@@ -24,11 +24,10 @@
 #include "buxton.h"
 #include "log.h"
 #include "serialize.h"
-#include "smack.h"
 #include "util.h"
 
 
-size_t buxton_serialize(BuxtonData *source, BuxtonString *label,
+size_t buxton_serialize(BuxtonData *source, BuxtonString *privilege,
 			uint8_t **target)
 {
 	size_t length;
@@ -41,7 +40,7 @@ size_t buxton_serialize(BuxtonData *source, BuxtonString *label,
 	assert(target);
 
 	/* DataType + length field */
-	size = sizeof(BuxtonDataType) + (sizeof(uint32_t) * 2) + label->length;
+	size = sizeof(BuxtonDataType) + (sizeof(uint32_t) * 2) + privilege->length;
 
 	/* Total size will be different for string data */
 	switch (source->type) {
@@ -65,17 +64,17 @@ size_t buxton_serialize(BuxtonData *source, BuxtonString *label,
 	memcpy(data, &(source->type), sizeof(BuxtonDataType));
 	offset += sizeof(BuxtonDataType);
 
-	/* Write out the length of the label field */
-	memcpy(data+offset, &(label->length), sizeof(uint32_t));
+	/* Write out the length of the privilege field */
+	memcpy(data+offset, &(privilege->length), sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
 	/* Write out the length of the data field */
 	memcpy(data+offset, &length, sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
-	/* Write out the label field */
-	memcpy(data+offset, label->value, label->length);
-	offset += label->length;
+	/* Write out the privilege field */
+	memcpy(data+offset, privilege->value, privilege->length);
+	offset += privilege->length;
 
 	/* Write the data itself */
 	switch (source->type) {
@@ -116,7 +115,7 @@ size_t buxton_serialize(BuxtonData *source, BuxtonString *label,
 }
 
 void buxton_deserialize(uint8_t *source, BuxtonData *target,
-			BuxtonString *label)
+			BuxtonString *privilege)
 {
 	size_t offset = 0;
 	size_t length = 0;
@@ -124,27 +123,27 @@ void buxton_deserialize(uint8_t *source, BuxtonData *target,
 
 	assert(source);
 	assert(target);
-	assert(label);
+	assert(privilege);
 
 	/* Retrieve the BuxtonDataType */
 	type = *(BuxtonDataType*)source;
 	offset += sizeof(BuxtonDataType);
 
-	/* Retrieve the length of the label */
-	label->length = *(uint32_t*)(source+offset);
+	/* Retrieve the length of the privilege */
+	privilege->length = *(uint32_t*)(source+offset);
 	offset += sizeof(uint32_t);
 
 	/* Retrieve the length of the value */
 	length = *(uint32_t*)(source+offset);
 	offset += sizeof(uint32_t);
 
-	/* Retrieve the label */
-	label->value = malloc(label->length);
-	if (label->length > 0 && !label->value) {
+	/* Retrieve the privilege */
+	privilege->value = malloc(privilege->length);
+	if (privilege->length > 0 && !privilege->value) {
 		abort();
 	}
-	memcpy(label->value, source+offset, label->length);
-	offset += label->length;
+	memcpy(privilege->value, source+offset, privilege->length);
+	offset += privilege->length;
 
 	switch (type) {
 	case BUXTON_TYPE_STRING:

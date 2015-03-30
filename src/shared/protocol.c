@@ -515,7 +515,7 @@ end:
 	return ret;
 }
 
-bool buxton_wire_set_label(_BuxtonClient *client,
+bool buxton_wire_set_priv(_BuxtonClient *client,
 			   _BuxtonKey *key, BuxtonString *value,
 			   BuxtonCallback callback, void *data)
 {
@@ -539,33 +539,33 @@ bool buxton_wire_set_label(_BuxtonClient *client,
 
 	list = buxton_array_new();
 	if (!buxton_array_add(list, &d_layer)) {
-		buxton_log("Failed to add layer to set_label array\n");
+		buxton_log("Failed to add layer to set_priv array\n");
 		goto end;
 	}
 	if (!buxton_array_add(list, &d_group)) {
-		buxton_log("Failed to add group to set_label array\n");
+		buxton_log("Failed to add group to set_priv array\n");
 		goto end;
 	}
 	if (key->name.value) {
 		buxton_string_to_data(&key->name, &d_name);
 		if (!buxton_array_add(list, &d_name)) {
-			buxton_log("Failed to add name to set_label array\n");
+			buxton_log("Failed to add name to set_priv array\n");
 			goto end;
 		}
 	}
 	if (!buxton_array_add(list, &d_value)) {
-		buxton_log("Failed to add value to set_label array\n");
+		buxton_log("Failed to add value to set_priv array\n");
 		goto end;
 	}
 
-	send_len = buxton_serialize_message(&send, BUXTON_CONTROL_SET_LABEL, msgid, list);
+	send_len = buxton_serialize_message(&send, BUXTON_CONTROL_SET_PRIV, msgid, list);
 
 	if (send_len == 0) {
 		goto end;
 	}
 
 	if (!send_message(client, send, send_len, callback, data, msgid,
-			  BUXTON_CONTROL_SET_LABEL, key)) {
+			  BUXTON_CONTROL_SET_PRIV, key)) {
 		goto end;
 	}
 
@@ -723,7 +723,7 @@ end:
 	return ret;
 }
 
-bool buxton_wire_get_label(_BuxtonClient *client, _BuxtonKey *key,
+bool buxton_wire_get_priv(_BuxtonClient *client, _BuxtonKey *key,
 			   BuxtonCallback callback, void *data)
 {
 	assert(client);
@@ -743,29 +743,29 @@ bool buxton_wire_get_label(_BuxtonClient *client, _BuxtonKey *key,
 
 	list = buxton_array_new();
 	if (!buxton_array_add(list, &d_layer)) {
-		buxton_log("Failed to add layer to get_label array\n");
+		buxton_log("Failed to add layer to get_priv array\n");
 		goto end;
 	}
 	if (!buxton_array_add(list, &d_group)) {
-		buxton_log("Failed to add group to get_label array\n");
+		buxton_log("Failed to add group to get_priv array\n");
 		goto end;
 	}
 	if (key->name.value) {
 		buxton_string_to_data(&key->name, &d_name);
 		if (!buxton_array_add(list, &d_name)) {
-			buxton_log("Failed to add name to get_label array\n");
+			buxton_log("Failed to add name to get_priv array\n");
 			goto end;
 		}
 	}
 
-	send_len = buxton_serialize_message(&send, BUXTON_CONTROL_GET_LABEL, msgid, list);
+	send_len = buxton_serialize_message(&send, BUXTON_CONTROL_GET_PRIV, msgid, list);
 
 	if (send_len == 0) {
 		goto end;
 	}
 
 	if (!send_message(client, send, send_len, callback, data, msgid,
-			  BUXTON_CONTROL_GET_LABEL, key)) {
+			  BUXTON_CONTROL_GET_PRIV, key)) {
 		goto end;
 	}
 

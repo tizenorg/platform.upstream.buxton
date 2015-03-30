@@ -143,7 +143,7 @@ static void make_key_data(_BuxtonKey *key, datum *key_data)
 }
 
 static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *label)
+		      BuxtonString *privilege)
 {
 	GDBM_FILE db;
 	int ret = -1;
@@ -153,11 +153,11 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	_cleanup_free_ uint8_t *data_store = NULL;
 	size_t size;
 	BuxtonData cdata = {0};
-	BuxtonString clabel;
+	BuxtonString cpriv;
 
 	assert(layer);
 	assert(key);
-	assert(label);
+	assert(privilege);
 
 	make_key_data(key, &key_data);
 
@@ -167,7 +167,7 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 		goto end;
 	}
 
-	/* set_label will pass a NULL for data */
+	/* set_priv will pass a NULL for data */
 	if (!data) {
 		cvalue = gdbm_fetch(db, key_data);
 		if (cvalue.dsize < 0 || cvalue.dptr == NULL) {
@@ -176,13 +176,13 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 		}
 
 		data_store = (uint8_t*)cvalue.dptr;
-		buxton_deserialize(data_store, &cdata, &clabel);
-		free(clabel.value);
+		buxton_deserialize(data_store, &cdata, &cpriv);
+		free(cpriv.value);
 		data = &cdata;
 		data_store = NULL;
 	}
 
-	size = buxton_serialize(data, label, &data_store);
+	size = buxton_serialize(data, privilege, &data_store);
 
 	value.dptr = (char *)data_store;
 	value.dsize = (int)size;
@@ -204,7 +204,7 @@ end:
 }
 
 static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *label)
+		      BuxtonString *privilege)
 {
 	GDBM_FILE db;
 	datum key_data;
@@ -235,11 +235,11 @@ static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	}
 
 	data_store = (uint8_t*)value.dptr;
-	buxton_deserialize(data_store, data, label);
+	buxton_deserialize(data_store, data, privilege);
 
 	if (data->type != key->type && key->type != BUXTON_TYPE_UNSET) {
-		free(label->value);
-		label->value = NULL;
+		free(privilege->value);
+		privilege->value = NULL;
 		if (data->type == BUXTON_TYPE_STRING) {
 			free(data->store.d_string.value);
 			data->store.d_string.value = NULL;
@@ -260,7 +260,7 @@ end:
 static int unset_value(BuxtonLayer *layer,
 			_BuxtonKey *key,
 			__attribute__((unused)) BuxtonData *data,
-			__attribute__((unused)) BuxtonString *label)
+			__attribute__((unused)) BuxtonString *privilege)
 {
 	GDBM_FILE db;
 	datum key_data;

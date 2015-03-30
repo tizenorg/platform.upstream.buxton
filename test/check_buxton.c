@@ -114,7 +114,7 @@ START_TEST(buxton_direct_set_value_check)
 	fail_if(buxton_direct_open(&c) == false,
 		"Direct open failed without daemon.");
 	_BuxtonKey group;
-	BuxtonString glabel;
+	BuxtonString gpriv;
 	_BuxtonKey key;
 	BuxtonData data;
 
@@ -122,7 +122,7 @@ START_TEST(buxton_direct_set_value_check)
 	group.group = buxton_string_pack("bxt_test_group");
 	group.name = (BuxtonString){ NULL, 0 };
 	group.type = BUXTON_TYPE_STRING;
-	glabel = buxton_string_pack("*");
+	gpriv = buxton_string_pack("*");
 
 	key.layer = group.layer;
 	key.group = group.group;
@@ -132,8 +132,8 @@ START_TEST(buxton_direct_set_value_check)
 	c.client.uid = getuid();
 	fail_if(buxton_direct_create_group(&c, &group, NULL) == false,
 		"Creating group failed.");
-	fail_if(buxton_direct_set_label(&c, &group, &glabel) == false,
-		"Setting group label failed.");
+	fail_if(buxton_direct_set_privilege(&c, &group, &gpriv) == false,
+		"Setting group privilege failed.");
 	data.type = BUXTON_TYPE_STRING;
 	data.store.d_string = buxton_string_pack("bxt_test_value");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
@@ -146,7 +146,7 @@ START_TEST(buxton_direct_get_value_for_layer_check)
 {
 	BuxtonControl c;
 	BuxtonData result;
-	BuxtonString dlabel;
+	BuxtonString dpriv;
 	_BuxtonKey key;
 
 	key.layer = buxton_string_pack("test-gdbm");
@@ -157,7 +157,7 @@ START_TEST(buxton_direct_get_value_for_layer_check)
 	c.client.uid = getuid();
 	fail_if(buxton_direct_open(&c) == false,
 		"Direct open failed without daemon.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
 		"Retrieving value from buxton gdbm backend failed.");
 	fail_if(result.type != BUXTON_TYPE_STRING,
 		"Buxton gdbm backend returned incorrect result type.");
@@ -174,7 +174,7 @@ START_TEST(buxton_direct_get_value_check)
 {
 	BuxtonControl c;
 	BuxtonData data, result;
-	BuxtonString dlabel;
+	BuxtonString dpriv;
 	_BuxtonKey key;
 	key.layer = buxton_string_pack("test-gdbm");
 	key.group = buxton_string_pack("bxt_test_group");
@@ -191,7 +191,7 @@ START_TEST(buxton_direct_get_value_check)
 		"Failed to allocate test string.");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Failed to set second value.");
-	fail_if(buxton_direct_get_value(&c, &key, &result, &dlabel, NULL) == -1,
+	fail_if(buxton_direct_get_value(&c, &key, &result, &dpriv, NULL) == -1,
 		"Retrieving value from buxton gdbm backend failed.");
 	fail_if(result.type != BUXTON_TYPE_STRING,
 		"Buxton gdbm backend returned incorrect result type.");
@@ -201,7 +201,7 @@ START_TEST(buxton_direct_get_value_check)
 	if (result.store.d_string.value)
 		free(result.store.d_string.value);
 	key.type = BUXTON_TYPE_UNSET;
-	fail_if(buxton_direct_get_value(&c, &key, &result, &dlabel, NULL) == -1,
+	fail_if(buxton_direct_get_value(&c, &key, &result, &dpriv, NULL) == -1,
 		"Retrieving value from buxton gdbm backend failed.");
 	fail_if(result.type != BUXTON_TYPE_STRING,
 		"Buxton gdbm backend returned incorrect result type.");
@@ -217,7 +217,7 @@ START_TEST(buxton_memory_backend_check)
 {
 	BuxtonControl c;
 	BuxtonData data, result;
-	BuxtonString dlabel, glabel;
+	BuxtonString dpriv, gpriv;
 	_BuxtonKey group;
 	_BuxtonKey key;
 
@@ -225,7 +225,7 @@ START_TEST(buxton_memory_backend_check)
 	group.group = buxton_string_pack("bxt_mem_test_group");
 	group.name = (BuxtonString){ NULL, 0 };
 	group.type = BUXTON_TYPE_STRING;
-	glabel = buxton_string_pack("*");
+	gpriv = buxton_string_pack("*");
 
 	key.layer = group.layer;
 	key.group = group.group;
@@ -238,20 +238,20 @@ START_TEST(buxton_memory_backend_check)
 	c.client.uid = getuid();
 	fail_if(buxton_direct_create_group(&c, &group, NULL) == false,
 		"Creating group failed.");
-	fail_if(buxton_direct_set_label(&c, &group, &glabel) == false,
-		"Setting group label failed.");
+	fail_if(buxton_direct_set_privilege(&c, &group, &gpriv) == false,
+		"Setting group privilege failed.");
 	data.type = BUXTON_TYPE_STRING;
 	data.store.d_string = buxton_string_pack("bxt_test_value");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Setting value in buxton memory backend directly failed.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
 		"Retrieving value from buxton memory backend directly failed.");
 	// FIXME: BUXTON_GROUP_VALUE is the dummy group data value, but the memory
 	// backend doesn't understand groups, so this is the current workaround.
 	fail_if(!streq(result.store.d_string.value, "bxt_test_value"),
 		"Buxton memory returned a different value to that set.");
 	key.type = BUXTON_TYPE_UNSET;
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
 		"Retrieving value from buxton memory backend directly failed.");
 	fail_if(!streq(result.store.d_string.value, "bxt_test_value"),
 		"Buxton memory returned a different value to that set.");
@@ -306,10 +306,10 @@ START_TEST(buxton_key_check)
 }
 END_TEST
 
-START_TEST(buxton_set_label_check)
+START_TEST(buxton_set_privilege_check)
 {
 	BuxtonControl c;
-	BuxtonString label = buxton_string_pack("*");
+	BuxtonString priv = buxton_string_pack("*");
 	_BuxtonKey key;
 	key.layer = buxton_string_pack("test-gdbm");
 	key.group = buxton_string_pack("bxt_test");
@@ -323,28 +323,28 @@ START_TEST(buxton_set_label_check)
 		"Direct open failed without daemon.");
 	fail_if(buxton_direct_create_group(&c, &key, NULL) == false,
 		"Creating group failed.");
-	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
-		"Failed to set label as root user.");
+	fail_if(buxton_direct_set_privilege(&c, &key, &priv) == false,
+		"Failed to set privilege as root user.");
 
 	c.client.uid = 1000;
 
 	if (skip_check)
-		fail_if(!buxton_direct_set_label(&c, &key, &label),
-			"Unable to set label with root check disabled");
+		fail_if(!buxton_direct_set_privilege(&c, &key, &priv),
+			"Unable to set privilege with root check disabled");
 	else
-		fail_if(buxton_direct_set_label(&c, &key, &label),
-			"Able to set label as non-root user.");
+		fail_if(buxton_direct_set_privilege(&c, &key, &priv),
+			"Able to set privilege as non-root user.");
 
 	buxton_direct_close(&c);
 }
 END_TEST
 
-START_TEST(buxton_group_label_check)
+START_TEST(buxton_group_privilege_check)
 {
 	BuxtonControl c;
 	BuxtonData result;
-	BuxtonString dlabel;
-	BuxtonString label = buxton_string_pack("*");
+	BuxtonString dpriv;
+	BuxtonString priv = buxton_string_pack("*");
 	_BuxtonKey key;
 	key.layer = buxton_string_pack("test-gdbm");
 	key.group = buxton_string_pack("test-group");
@@ -357,86 +357,86 @@ START_TEST(buxton_group_label_check)
 		"Direct open failed without daemon.");
 	fail_if(buxton_direct_create_group(&c, &key, NULL) == false,
 		"Creating group failed.");
-	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
-		"Failed to set group label.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
-		"Retrieving group label failed.");
-	fail_if(!streq("*", dlabel.value),
-		"Retrieved group label is incorrect.");
+	fail_if(buxton_direct_set_privilege(&c, &key, &priv) == false,
+		"Failed to set group privilege.");
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
+		"Retrieving group privilege failed.");
+	fail_if(!streq("*", dpriv.value),
+		"Retrieved group privilege is incorrect.");
 
-	free(dlabel.value);
+	free(dpriv.value);
 	buxton_direct_close(&c);
 }
 END_TEST
 
-START_TEST(buxton_name_label_check)
+START_TEST(buxton_name_privilege_check)
 {
 	BuxtonControl c;
 	BuxtonData data, result;
-	BuxtonString label, dlabel;
+	BuxtonString priv, dpriv;
 	_BuxtonKey key;
 
-	/* create the group first, and validate the label */
+	/* create the group first, and validate the privilege */
 	key.layer = buxton_string_pack("test-gdbm");
 	key.group = buxton_string_pack("group-foo");
 	key.name.value = NULL;
 	key.type = BUXTON_TYPE_STRING;
-	label = buxton_string_pack("*");
+	priv = buxton_string_pack("*");
 
 	c.client.uid = 0;
 	fail_if(buxton_direct_open(&c) == false,
 		"Direct open failed without daemon.");
 	fail_if(buxton_direct_create_group(&c, &key, NULL) == false,
 		"Creating group failed.");
-	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
-		"Failed to set group label.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
-		"Retrieving group label failed.");
-	fail_if(!streq("*", dlabel.value),
-		"Retrieved group label is incorrect.");
-	free(dlabel.value);
+	fail_if(buxton_direct_set_privilege(&c, &key, &priv) == false,
+		"Failed to set group privilege.");
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
+		"Retrieving group privilege failed.");
+	fail_if(!streq("*", dpriv.value),
+		"Retrieved group privilege is incorrect.");
+	free(dpriv.value);
 	free(result.store.d_string.value);
 
-	/* then create the name (key), and validate the label */
+	/* then create the name (key), and validate the privilege */
 	key.name = buxton_string_pack("name-foo");
 	data.type = BUXTON_TYPE_STRING;
 	data.store.d_string = buxton_string_pack("value1-foo");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Failed to set key name-foo.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
 		"Failed to get value for name-foo 1");
 	fail_if(!streq("value1-foo", result.store.d_string.value),
 		"Retrieved key value is incorrect 1");
-	fail_if(!streq(dlabel.value, "_"), "Failed to set default label");
-	free(dlabel.value);
+	fail_if(!streq(dpriv.value, ""), "Failed to set default privilege");
+	free(dpriv.value);
 	free(result.store.d_string.value);
-	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
-		"Failed to set name label.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_set_privilege(&c, &key, &priv) == false,
+		"Failed to set name privilege.");
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
 		"Failed to get value for name-foo 2");
 	fail_if(!streq("value1-foo", result.store.d_string.value),
 		"Retrieved key value is incorrect 2");
-	fail_if(!streq("*", dlabel.value),
-		"Retrieved key label is incorrect.");
-	free(dlabel.value);
+	fail_if(!streq("*", dpriv.value),
+		"Retrieved key privilege is incorrect.");
+	free(dpriv.value);
 	free(result.store.d_string.value);
 
-	/* modify the same key, with a new value, and validate the label */
+	/* modify the same key, with a new value, and validate the privilege */
 	data.store.d_string = buxton_string_pack("value2-foo");
 	fail_if(buxton_direct_set_value(&c, &key, &data, NULL) == false,
 		"Failed to modify key name-foo.");
-	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dlabel, NULL),
+	fail_if(buxton_direct_get_value_for_layer(&c, &key, &result, &dpriv, NULL),
 		"Failed to get new value for name-foo.");
 	fail_if(!streq("value2-foo", result.store.d_string.value),
 		"New key value is incorrect.");
-	fail_if(!streq("*", dlabel.value),
-		"Key label has been modified.");
+	fail_if(!streq("*", dpriv.value),
+		"Key privilege has been modified.");
 
-	/* modify the key label directly once it has been created */
-	fail_if(buxton_direct_set_label(&c, &key, &label) == false,
-		"Failed to modify label on key.");
+	/* modify the key privilege directly once it has been created */
+	fail_if(buxton_direct_set_privilege(&c, &key, &priv) == false,
+		"Failed to modify privilege on key.");
 
-	free(dlabel.value);
+	free(dpriv.value);
 	free(result.store.d_string.value);
 
 	buxton_direct_close(&c);
@@ -839,7 +839,7 @@ START_TEST(buxton_wire_set_value_check)
 }
 END_TEST
 
-START_TEST(buxton_wire_set_label_check)
+START_TEST(buxton_wire_set_priv_check)
 {
 	_BuxtonClient client;
 	int server;
@@ -862,20 +862,20 @@ START_TEST(buxton_wire_set_label_check)
 	fail_if(!setup_callbacks(),
 		"Failed to initialize callbacks");
 
-	/* first, set a label on a group */
+	/* first, set a privilege on a group */
 	key.layer = buxton_string_pack("layer");
 	key.group = buxton_string_pack("group");
 	key.name.value = NULL;
 	value = buxton_string_pack("*");
-	fail_if(buxton_wire_set_label(&client, &key, &value, NULL,
+	fail_if(buxton_wire_set_priv(&client, &key, &value, NULL,
 				      NULL) != true,
-		"Failed to properly set label");
+		"Failed to properly set privilege");
 
 	r = read(server, buf, 4096);
 	fail_if(r < 0, "Read from client failed");
 	size = buxton_deserialize_message(buf, &msg, (size_t)r, &msgid, &list);
 	fail_if(size != 3, "Failed to get valid message from buffer");
-	fail_if(msg != BUXTON_CONTROL_SET_LABEL,
+	fail_if(msg != BUXTON_CONTROL_SET_PRIV,
 		"Failed to get correct control type");
 	fail_if(list[0].type != BUXTON_TYPE_STRING, "Failed to set correct layer type");
 	fail_if(list[1].type != BUXTON_TYPE_STRING, "Failed to set correct group type");
@@ -885,27 +885,27 @@ START_TEST(buxton_wire_set_label_check)
 	fail_if(!streq(list[1].store.d_string.value, "group"),
 		"Failed to set correct group");
 	fail_if(!streq(list[2].store.d_string.value, "*"),
-		"Failed to set correct label");
+		"Failed to set correct privilege");
 
 	free(list[0].store.d_string.value);
 	free(list[1].store.d_string.value);
 	free(list[2].store.d_string.value);
 	free(list);
 
-	/* ... then, set a label on a key */
+	/* ... then, set a privilege on a key */
 	key.layer = buxton_string_pack("layer");
 	key.group = buxton_string_pack("group");
 	key.name = buxton_string_pack("name");
 	value = buxton_string_pack("*");
-	fail_if(buxton_wire_set_label(&client, &key, &value, NULL,
+	fail_if(buxton_wire_set_priv(&client, &key, &value, NULL,
 				      NULL) != true,
-		"Failed to properly set label");
+		"Failed to properly set privilege");
 
 	r = read(server, buf, 4096);
 	fail_if(r < 0, "Read from client failed");
 	size = buxton_deserialize_message(buf, &msg, (size_t)r, &msgid, &list);
 	fail_if(size != 4, "Failed to get valid message from buffer");
-	fail_if(msg != BUXTON_CONTROL_SET_LABEL,
+	fail_if(msg != BUXTON_CONTROL_SET_PRIV,
 		"Failed to get correct control type");
 	fail_if(list[0].type != BUXTON_TYPE_STRING, "Failed to set correct layer type");
 	fail_if(list[1].type != BUXTON_TYPE_STRING, "Failed to set correct group type");
@@ -918,7 +918,7 @@ START_TEST(buxton_wire_set_label_check)
 	fail_if(!streq(list[2].store.d_string.value, "name"),
 		"Failed to set correct name");
 	fail_if(!streq(list[3].store.d_string.value, "*"),
-		"Failed to set correct label");
+		"Failed to set correct privilege");
 
 	free(list[0].store.d_string.value);
 	free(list[1].store.d_string.value);
@@ -1016,7 +1016,7 @@ START_TEST(buxton_wire_get_value_check)
 }
 END_TEST
 
-START_TEST(buxton_wire_get_label_check)
+START_TEST(buxton_wire_get_priv_check)
 {
 	_BuxtonClient client;
 	int server;
@@ -1038,19 +1038,19 @@ START_TEST(buxton_wire_get_label_check)
 	fail_if(!setup_callbacks(),
 		"Failed to initialize callbacks");
 
-	/* first, get a label on a group */
+	/* first, get a privilege on a group */
 	key.layer = buxton_string_pack("layer");
 	key.group = buxton_string_pack("group");
 	key.name.value = NULL;
-	fail_if(buxton_wire_get_label(&client, &key, NULL,
+	fail_if(buxton_wire_get_priv(&client, &key, NULL,
 				      NULL) != true,
-		"Failed to properly get label");
+		"Failed to properly get privilege");
 
 	r = read(server, buf, 4096);
 	fail_if(r < 0, "Read from client failed");
 	size = buxton_deserialize_message(buf, &msg, (size_t)r, &msgid, &list);
 	fail_if(size != 2, "Failed to get valid message from buffer");
-	fail_if(msg != BUXTON_CONTROL_GET_LABEL,
+	fail_if(msg != BUXTON_CONTROL_GET_PRIV,
 		"Failed to get correct control type");
 	fail_if(list[0].type != BUXTON_TYPE_STRING, "Failed to set correct layer type");
 	fail_if(list[1].type != BUXTON_TYPE_STRING, "Failed to set correct group type");
@@ -1063,19 +1063,19 @@ START_TEST(buxton_wire_get_label_check)
 	free(list[1].store.d_string.value);
 	free(list);
 
-	/* ... then, get a label on a key */
+	/* ... then, get a privilege on a key */
 	key.layer = buxton_string_pack("layer");
 	key.group = buxton_string_pack("group");
 	key.name = buxton_string_pack("name");
-	fail_if(buxton_wire_get_label(&client, &key, NULL,
+	fail_if(buxton_wire_get_priv(&client, &key, NULL,
 				      NULL) != true,
-		"Failed to properly get label");
+		"Failed to properly get privilege");
 
 	r = read(server, buf, 4096);
 	fail_if(r < 0, "Read from client failed");
 	size = buxton_deserialize_message(buf, &msg, (size_t)r, &msgid, &list);
 	fail_if(size != 3, "Failed to get valid message from buffer");
-	fail_if(msg != BUXTON_CONTROL_GET_LABEL,
+	fail_if(msg != BUXTON_CONTROL_GET_PRIV,
 		"Failed to get correct control type");
 	fail_if(list[0].type != BUXTON_TYPE_STRING, "Failed to set correct layer type");
 	fail_if(list[1].type != BUXTON_TYPE_STRING, "Failed to set correct group type");
@@ -1277,9 +1277,9 @@ buxton_suite(void)
 	tcase_add_test(tc, buxton_direct_get_value_check);
 	tcase_add_test(tc, buxton_memory_backend_check);
 	tcase_add_test(tc, buxton_key_check);
-	tcase_add_test(tc, buxton_set_label_check);
-	tcase_add_test(tc, buxton_group_label_check);
-	tcase_add_test(tc, buxton_name_label_check);
+	tcase_add_test(tc, buxton_set_privilege_check);
+	tcase_add_test(tc, buxton_group_privilege_check);
+	tcase_add_test(tc, buxton_name_privilege_check);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("buxton_protocol_functions");
@@ -1289,9 +1289,9 @@ buxton_suite(void)
 	tcase_add_test(tc, buxton_wire_handle_response_check);
 	tcase_add_test(tc, buxton_wire_get_response_check);
 	tcase_add_test(tc, buxton_wire_set_value_check);
-	tcase_add_test(tc, buxton_wire_set_label_check);
+	tcase_add_test(tc, buxton_wire_set_priv_check);
 	tcase_add_test(tc, buxton_wire_get_value_check);
-	tcase_add_test(tc, buxton_wire_get_label_check);
+	tcase_add_test(tc, buxton_wire_get_priv_check);
 	tcase_add_test(tc, buxton_wire_unset_value_check);
 	tcase_add_test(tc, buxton_wire_create_group_check);
 	tcase_add_test(tc, buxton_wire_remove_group_check);

@@ -74,10 +74,10 @@ bool cli_create_db(BuxtonControl *control,
 	return ret;
 }
 
-bool cli_set_label(BuxtonControl *control, BuxtonDataType type,
+bool cli_set_privilege(BuxtonControl *control, BuxtonDataType type,
 		   char *one, char *two, char *three, char *four)
 {
-	BuxtonString label;
+	BuxtonString privilege;
 	BuxtonKey key;
 	bool ret = false;
 
@@ -92,21 +92,21 @@ bool cli_set_label(BuxtonControl *control, BuxtonDataType type,
 	}
 
 	if (four != NULL) {
-		label = buxton_string_pack(four);
+		privilege = buxton_string_pack(four);
 	} else {
-		label = buxton_string_pack(three);
+		privilege = buxton_string_pack(three);
 	}
 
 	if (control->client.direct) {
-		ret = buxton_direct_set_label(control, (_BuxtonKey *)key, &label);
+		ret = buxton_direct_set_privilege(control, (_BuxtonKey *)key, &privilege);
 	} else {
-		ret = !buxton_set_label(&control->client, key, label.value,
+		ret = !buxton_set_privilege(&control->client, key, privilege.value,
 					NULL, NULL, true);
 	}
 
 	if (!ret) {
 		char *name = get_name(key);
-		printf("Failed to update key \'%s:%s\' label in layer '%s'\n",
+		printf("Failed to update key \'%s:%s\' privilege in layer '%s'\n",
 		       two, nv(name), one);
 		free(name);
 	}
@@ -153,7 +153,7 @@ bool cli_remove_group(BuxtonControl *control, BuxtonDataType type,
 	}
 
 	if (control->client.direct) {
-		ret = buxton_direct_remove_group(control, (_BuxtonKey *)key, NULL);
+		ret = buxton_direct_remove_group(control, (_BuxtonKey *)key);
 	} else {
 		ret = !buxton_remove_group(&control->client, key, NULL, NULL, true);
 	}
@@ -168,7 +168,7 @@ bool cli_remove_group(BuxtonControl *control, BuxtonDataType type,
 	return ret;
 }
 
-void get_label_callback(BuxtonResponse response, void *data)
+void get_priv_callback(BuxtonResponse response, void *data)
 {
 	void **r = data;
 
@@ -184,19 +184,19 @@ void get_label_callback(BuxtonResponse response, void *data)
 	*r = buxton_response_value(response);
 }
 
-bool cli_get_label(BuxtonControl *control, BuxtonDataType type,
+bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 		   char *one, char *two, char *three,
 		   __attribute__((unused)) char *four)
 {
 	BuxtonKey key;
-	_cleanup_free_ char *label = NULL;
+	_cleanup_free_ char *priv = NULL;
 	char *layer = one;
 	char *group = two;
 	char *name = three;
 
 
 	BuxtonData ddata;
-	BuxtonString dlabel;
+	BuxtonString dpriv;
 	bool ret = false;
 
 	if (!layer || !group) {
@@ -210,19 +210,18 @@ bool cli_get_label(BuxtonControl *control, BuxtonDataType type,
 
 	if (control->client.direct) {
 		ddata.type = BUXTON_TYPE_UNSET;
-		dlabel.value = NULL;
+		dpriv.value = NULL;
 		ret = buxton_direct_get_value_for_layer(control, key,
-							&ddata, &dlabel,
-							NULL);
+							&ddata, &dpriv);
 		if (ddata.type == BUXTON_TYPE_STRING) {
 			free(ddata.store.d_string.value);
 		}
-		label = dlabel.value;
+		priv = dpriv.value;
 	} else {
-		ret = buxton_get_label(&control->client,
+		ret = buxton_get_privilege(&control->client,
 					      key,
-					      get_label_callback,
-					      &label, true);
+					      get_priv_callback,
+					      &priv, true);
 	}
 	if (ret) {
 		printf("Requested key not found in layer \'%s\': %s:%s\n",
@@ -230,7 +229,7 @@ bool cli_get_label(BuxtonControl *control, BuxtonDataType type,
 		return false;
 	}
 
-	printf("[%s] %s:%s - %s\n", layer, group, name, label);
+	printf("[%s] %s:%s - %s\n", layer, group, name, priv);
 
 	return true;
 }
@@ -485,7 +484,7 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	_cleanup_free_ char *name = NULL;
 	_cleanup_free_ char *value = NULL;
 	const char *tname = NULL;
-	BuxtonString dlabel;
+	BuxtonString dpriv;
 	bool ret = false;
 	int32_t ret_val;
 	int r;
@@ -512,8 +511,7 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	if (three != NULL) {
 		if (control->client.direct) {
 			ret = buxton_direct_get_value_for_layer(control, key,
-								&get, &dlabel,
-								NULL);
+								&get, &dpriv);
 		} else {
 			ret = buxton_get_value(&control->client,
 						      key,
@@ -529,7 +527,7 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 		}
 	} else {
 		if (control->client.direct) {
-			ret_val = buxton_direct_get_value(control, key, &get, &dlabel, NULL);
+			ret_val = buxton_direct_get_value(control, key, &get, &dpriv);
 			if (ret_val == 0) {
 				ret = true;
 			}
@@ -804,7 +802,7 @@ bool cli_unset_value(BuxtonControl *control,
 	}
 
 	if (control->client.direct) {
-		return buxton_direct_unset_value(control, key, NULL);
+		return buxton_direct_unset_value(control, key);
 	} else {
 		return !buxton_unset_value(&control->client,
 					   key, unset_value_callback,

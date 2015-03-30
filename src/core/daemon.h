@@ -115,14 +115,14 @@ void set_value(BuxtonDaemon *self, client_list_item *client,
 	       _BuxtonKey *key, BuxtonData *value, int32_t *status);
 
 /**
- * Buxton daemon function for setting a label
+ * Buxton daemon function for setting a privilege
  * @param self buxtond instance being run
  * @param client Used to validate smack access
- * @param key Key or group for the label being set
+ * @param key Key or group for the privilege being set
  * @param value Label being set
  * @param status Will be set with the int32_t result of the operation
  */
-void set_label(BuxtonDaemon *self, client_list_item *client,
+void set_priv(BuxtonDaemon *self, client_list_item *client,
 	       _BuxtonKey *key, BuxtonData *value, int32_t *status);
 
 /**
@@ -158,14 +158,14 @@ BuxtonData *get_value(BuxtonDaemon *self, client_list_item *client,
 	__attribute__((warn_unused_result));
 
 /**
- * Buxton daemon function for getting a label
+ * Buxton daemon function for getting a privilege
  * @param self buxtond instance being run
  * @param client Used to validate smack access
  * @param key Key for the value being sought
  * @param status Will be set with the int32_t result of the operation
  * @returns BuxtonData Label stored for key if successful otherwise NULL
  */
-BuxtonData *get_label(BuxtonDaemon *self, client_list_item *client,
+BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
 		      _BuxtonKey *key, int32_t *status)
 	__attribute__((warn_unused_result));
 

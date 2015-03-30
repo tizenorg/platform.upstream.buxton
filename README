@@ -28,15 +28,5 @@ Build dependencies
 - Linux kernel headers, for the inotify header
 
 - systemd, for autodetection of service file locations, for socket activation
-  of buxtond, and the initialization of the Smack virtual filesystem
+  of buxtond
 
-
-Additional runtime dependencies
-===============================
-
-- Smack-enabled kernel, for MAC support
-  * CONFIG_SECURITY_SMACK=y
-
-
-Note: if running a kernel without Smack enabled, buxton can still be used for
-configuration management, but MAC will not be enforced.

@@ -27,6 +27,8 @@ BUXTON_1 {
 		buxton_list_names;
 		buxton_response_list_names_count;
 		buxton_response_list_names_item;
+		buxton_set_privilege;
+		buxton_get_privilege;
 	local:
 		*;
 };

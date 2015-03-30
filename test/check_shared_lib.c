@@ -28,7 +28,6 @@
 #include "hashmap.h"
 #include "log.h"
 #include "serialize.h"
-#include "smack.h"
 #include "util.h"
 #include "configurator.h"
 

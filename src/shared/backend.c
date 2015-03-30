@@ -21,7 +21,6 @@
 #include "util.h"
 #include "log.h"
 #include "buxtonarray.h"
-#include "smack.h"
 
 /**
  * Create a BuxtonLayer out of a ConfigLayer

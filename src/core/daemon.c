@@ -60,7 +60,7 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 		key->type = list[3].type;
 		*value = &(list[3]);
 		break;
-	case BUXTON_CONTROL_SET_LABEL:
+	case BUXTON_CONTROL_SET_PRIV:
 		if (count == 3) {
 			if (list[0].type != BUXTON_TYPE_STRING || list[1].type != BUXTON_TYPE_STRING ||
 			    list[2].type != BUXTON_TYPE_STRING) {
@@ -128,7 +128,7 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 			return false;
 		}
 		break;
-	case BUXTON_CONTROL_GET_LABEL:
+	case BUXTON_CONTROL_GET_PRIV:
 		if (count == 3) {
 			if (list[0].type != BUXTON_TYPE_STRING || list[1].type != BUXTON_TYPE_STRING ||
 			    list[2].type != BUXTON_TYPE_STRING) {
@@ -263,8 +263,8 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	case BUXTON_CONTROL_SET:
 		set_value(self, client, &key, value, &response);
 		break;
-	case BUXTON_CONTROL_SET_LABEL:
-		set_label(self, client, &key, value, &response);
+	case BUXTON_CONTROL_SET_PRIV:
+		set_priv(self, client, &key, value, &response);
 		break;
 	case BUXTON_CONTROL_CREATE_GROUP:
 		create_group(self, client, &key, &response);
@@ -275,8 +275,8 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	case BUXTON_CONTROL_GET:
 		data = get_value(self, client, &key, &response);
 		break;
-	case BUXTON_CONTROL_GET_LABEL:
-		data = get_label(self, client, &key, &response);
+	case BUXTON_CONTROL_GET_PRIV:
+		data = get_priv(self, client, &key, &response);
 		break;
 	case BUXTON_CONTROL_UNSET:
 		unset_value(self, client, &key, &response);
@@ -323,7 +323,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 			abort();
 		}
 		break;
-	case BUXTON_CONTROL_SET_LABEL:
+	case BUXTON_CONTROL_SET_PRIV:
 		response_len = buxton_serialize_message(&response_store,
 							BUXTON_CONTROL_STATUS,
 							msgid, out_list);
@@ -331,7 +331,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize set_label response message\n");
+			buxton_log("Failed to serialize set_priv response message\n");
 			abort();
 		}
 		break;
@@ -374,7 +374,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 			abort();
 		}
 		break;
-	case BUXTON_CONTROL_GET_LABEL:
+	case BUXTON_CONTROL_GET_PRIV:
 		if (data && !buxton_array_add(out_list, data)) {
 			abort();
 		}
@@ -385,7 +385,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 			if (errno == ENOMEM) {
 				abort();
 			}
-			buxton_log("Failed to serialize get_label response message\n");
+			buxton_log("Failed to serialize get_priv response message\n");
 			abort();
 		}
 		break;
@@ -646,7 +646,7 @@ void set_value(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 
 	self->buxton.client.uid = client->cred.uid;
 
-	if (!buxton_direct_set_value(&self->buxton, key, value, client->smack_label)) {
+	if (!buxton_direct_set_value(&self->buxton, key, value, NULL)) {
 		return;
 	}
 
@@ -654,7 +654,7 @@ void set_value(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 	buxton_debug("Daemon set value completed\n");
 }
 
-void set_label(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
+void set_priv(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 	       BuxtonData *value, int32_t *status)
 {
 
@@ -666,20 +666,20 @@ void set_label(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 
 	*status = -1;
 
-	buxton_debug("Daemon setting label on [%s][%s][%s]\n",
+	buxton_debug("Daemon setting privilege on [%s][%s][%s]\n",
 		     key->layer.value,
 		     key->group.value,
 		     key->name.value);
 
 	self->buxton.client.uid = client->cred.uid;
 
-	/* Use internal library to set label */
-	if (!buxton_direct_set_label(&self->buxton, key, &value->store.d_string)) {
+	/* Use internal library to set privilege */
+	if (!buxton_direct_set_privilege(&self->buxton, key, &value->store.d_string)) {
 		return;
 	}
 
 	*status = 0;
-	buxton_debug("Daemon set label completed\n");
+	buxton_debug("Daemon set privilege completed\n");
 }
 
 void create_group(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
@@ -699,7 +699,7 @@ void create_group(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 	self->buxton.client.uid = client->cred.uid;
 
 	/* Use internal library to create group */
-	if (!buxton_direct_create_group(&self->buxton, key, client->smack_label)) {
+	if (!buxton_direct_create_group(&self->buxton, key, NULL)) {
 		return;
 	}
 
@@ -724,7 +724,7 @@ void remove_group(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 	self->buxton.client.uid = client->cred.uid;
 
 	/* Use internal library to create group */
-	if (!buxton_direct_remove_group(&self->buxton, key, client->smack_label)) {
+	if (!buxton_direct_remove_group(&self->buxton, key)) {
 		return;
 	}
 
@@ -749,7 +749,7 @@ void unset_value(BuxtonDaemon *self, client_list_item *client,
 
 	/* Use internal library to unset value */
 	self->buxton.client.uid = client->cred.uid;
-	if (!buxton_direct_unset_value(&self->buxton, key, client->smack_label)) {
+	if (!buxton_direct_unset_value(&self->buxton, key)) {
 		return;
 	}
 
@@ -763,7 +763,7 @@ BuxtonData *get_value(BuxtonDaemon *self, client_list_item *client,
 		      _BuxtonKey *key, int32_t *status)
 {
 	BuxtonData *data = NULL;
-	BuxtonString label;
+	BuxtonString priv;
 	int32_t ret;
 
 	assert(self);
@@ -786,13 +786,12 @@ BuxtonData *get_value(BuxtonDaemon *self, client_list_item *client,
 			     key->name.value);
 	}
 	self->buxton.client.uid = client->cred.uid;
-	ret = buxton_direct_get_value(&self->buxton, key, data, &label,
-				      client->smack_label);
+	ret = buxton_direct_get_value(&self->buxton, key, data, &priv);
 	if (ret) {
 		goto fail;
 	}
 
-	free(label.value);
+	free(priv.value);
 	buxton_debug("get value returned successfully from db\n");
 
 	*status = 0;
@@ -806,11 +805,11 @@ end:
 	return data;
 }
 
-BuxtonData *get_label(BuxtonDaemon *self, client_list_item *client,
+BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
 		      _BuxtonKey *key, int32_t *status)
 {
 	BuxtonData *data = NULL;
-	BuxtonString label = { NULL, 0 };
+	BuxtonString priv = { NULL, 0 };
 	int32_t ret;
 
 	assert(self);
@@ -825,15 +824,14 @@ BuxtonData *get_label(BuxtonDaemon *self, client_list_item *client,
 		abort();
 	}
 
-	buxton_debug("Daemon getting label on [%s][%s][%s]\n",
+	buxton_debug("Daemon getting privilege on [%s][%s][%s]\n",
 		     key->layer.value,
 		     key->group.value,
 		     key->name.value);
 
 	self->buxton.client.uid = client->cred.uid;
 
-	ret = buxton_direct_get_value(&self->buxton, key, data, &label,
-				      client->smack_label);
+	ret = buxton_direct_get_value(&self->buxton, key, data, &priv);
 	if (ret) {
 		goto fail;
 	}
@@ -842,15 +840,15 @@ BuxtonData *get_label(BuxtonDaemon *self, client_list_item *client,
 		free(data->store.d_string.value);
 	}
 	data->type = BUXTON_TYPE_STRING;
-	data->store.d_string = label;
-	buxton_debug("get label returned successfully from db\n");
+	data->store.d_string = priv;
+	buxton_debug("get privilege returned successfully from db\n");
 
 	*status = 0;
 	goto end;
 fail:
-	buxton_debug("get label failed\n");
+	buxton_debug("get privilege failed\n");
 	free(data);
-	free(label.value);
+	free(priv.value);
 	data = NULL;
 end:
 

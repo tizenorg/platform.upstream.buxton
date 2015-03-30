@@ -5,7 +5,6 @@
 [Configuration]
 ModuleDirectory=@abs_top_builddir@/.libs
 DatabasePath=@abs_top_builddir@/test/databases
-SmackLoadFile=@abs_top_srcdir@/test/test.load2
 SocketPath=@abs_top_builddir@/test/buxton-socket
 
 [base]

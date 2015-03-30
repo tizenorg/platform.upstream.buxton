@@ -36,7 +36,6 @@
 #include "direct.h"
 #include "hashmap.h"
 #include "log.h"
-#include "smack.h"
 #include "util.h"
 #include "buxtonlist.h"
 
@@ -54,15 +53,6 @@ typedef struct _fuzz_context_t {
 	size_t size;
 	int iteration;
 } FuzzContext;
-
-static bool use_smack(void)
-{
-	bool __attribute__((unused))dummy;
-
-	dummy = buxton_cache_smack_rules();
-
-	return buxton_smack_enabled();
-}
 
 static char* dump_fuzz(FuzzContext *fuzz)
 {
@@ -304,7 +294,7 @@ START_TEST(buxton_set_value_check)
 		"Open failed with daemon.");
 	fail_if(buxton_create_group(c, group, NULL, NULL, true),
 		"Creating group in buxton failed.");
-	fail_if(buxton_set_label(c, group, "*", NULL, NULL, true),
+	fail_if(buxton_set_privilege(c, group, "*", NULL, NULL, true),
 		"Setting group in buxton failed.");
 	fail_if(buxton_set_value(c, key, "bxt_test_value",
 				 client_set_value_test,
@@ -315,7 +305,7 @@ START_TEST(buxton_set_value_check)
 }
 END_TEST
 
-static void client_set_label_test(BuxtonResponse response, void *data)
+static void client_set_priv_test(BuxtonResponse response, void *data)
 {
 	BuxtonKey user_key = (BuxtonKey)data;
 	BuxtonKey key;
@@ -325,20 +315,20 @@ static void client_set_label_test(BuxtonResponse response, void *data)
 	char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
 	bool skip_check = (root_check && streq(root_check, "0"));
 
-	fail_if(buxton_response_type(response) != BUXTON_CONTROL_SET_LABEL,
-		"Failed to get set label response type");
+	fail_if(buxton_response_type(response) != BUXTON_CONTROL_SET_PRIV,
+		"Failed to get set privilege response type");
 
 	if (uid == 0) {
 		fail_if(buxton_response_status(response) != 0,
-			"Set label failed");
+			"Set privilege failed");
 		key = buxton_response_key(response);
-		fail_if(!key, "Failed to get set label key");
+		fail_if(!key, "Failed to get set privilege key");
 		user_group = buxton_key_get_group(user_key);
 		fail_if(!user_group, "Failed to get group from user key");
 		group = buxton_key_get_group(key);
 		fail_if(!group, "Failed to get group from key");
 		fail_if(!streq(group, user_group),
-			"Incorrect set label group returned");
+			"Incorrect set privilge group returned");
 		free(user_group);
 		free(group);
 
@@ -347,7 +337,7 @@ static void client_set_label_test(BuxtonResponse response, void *data)
 			name = buxton_key_get_name(key);
 			fail_if(!name, "Failed to get name from key");
 			fail_if(!streq(name, user_name),
-				"Incorrect set label name returned");
+				"Incorrect set privilege name returned");
 			free(user_name);
 			free(name);
 		}
@@ -355,14 +345,14 @@ static void client_set_label_test(BuxtonResponse response, void *data)
 	} else {
 		if (skip_check) {
 			fail_if(buxton_response_status(response) != 0,
-			"Set label failed");
+			"Set privilege failed");
 		} else {
 			fail_if(buxton_response_status(response) == 0,
-			"Set label succeeded, but the client is not root");
+			"Set privilege succeeded, but the client is not root");
 		}
 	}
 }
-START_TEST(buxton_set_label_check)
+START_TEST(buxton_set_privilege_check)
 {
 	BuxtonClient c;
 	BuxtonKey group = buxton_key_create("bxt_group", NULL, "test-gdbm", BUXTON_TYPE_STRING);
@@ -371,19 +361,19 @@ START_TEST(buxton_set_label_check)
 		"Open failed with daemon.");
 	fail_if(buxton_create_group(c, group, NULL, NULL, true),
 		"Creating group in buxton failed.");
-	fail_if(buxton_set_label(c, group, "*",
-				 client_set_label_test,
+	fail_if(buxton_set_privilege(c, group, "*",
+				 client_set_priv_test,
 				 group, true),
-		"Setting label for group in buxton failed.");
+		"Setting privilege for group in buxton failed.");
 
 	BuxtonKey name = buxton_key_create("bxt_group", "bxt_name", "test-gdbm", BUXTON_TYPE_STRING);
 	fail_if(!name, "Failed to create key for name");
 	fail_if(buxton_set_value(c, name, "bxt_value", NULL, NULL, true),
-		"Setting label for name in buxton failed.");
-	fail_if(buxton_set_label(c, name, "*",
-				 client_set_label_test,
+		"Setting privilege for name in buxton failed.");
+	fail_if(buxton_set_privilege(c, name, "*",
+				 client_set_priv_test,
 				 name, true),
-		"Setting label for name in buxton failed.");
+		"Setting privilege for name in buxton failed.");
 
 	buxton_key_free(group);
 	buxton_key_free(name);
@@ -449,7 +439,7 @@ START_TEST(buxton_get_value_check)
 
 	fail_if(buxton_create_group(c, group, NULL, NULL, true),
 		"Creating group in buxton failed.");
-	fail_if(buxton_set_label(c, group, "*", NULL, NULL, true),
+	fail_if(buxton_set_privilege(c, group, "*", NULL, NULL, true),
 		"Setting group in buxton failed.");
 	fail_if(buxton_set_value(c, key, "bxt_test_value2",
 				 client_set_value_test, "group", true),
@@ -465,16 +455,16 @@ START_TEST(buxton_get_value_check)
 }
 END_TEST
 
-static void client_get_label_test(BuxtonResponse response, void *data)
+static void client_get_priv_test(BuxtonResponse response, void *data)
 {
 	BuxtonKey key;
 	char *group;
 	char *name;
 	char *l;
-	char *label = (char *)data;
+	char *priv = (char *)data;
 
 	fail_if(buxton_response_status(response) != 0,
-		"Get label failed");
+		"Get privilege failed");
 
 	key = buxton_response_key(response);
 	fail_if(!key, "Failed to get key");
@@ -488,9 +478,9 @@ static void client_get_label_test(BuxtonResponse response, void *data)
 			"Failed to get correct name");
 	}
 	l = buxton_response_value(response);
-	printf("label=%s\n", l);
-	fail_if(!l, "Failed to get label");
-	fail_if(!streq(l, label),
+	printf("privilege=%s\n", l);
+	fail_if(!l, "Failed to get privilege");
+	fail_if(!streq(l, priv),
 		"Failed to get correct value");
 
 	free(l);
@@ -499,7 +489,7 @@ static void client_get_label_test(BuxtonResponse response, void *data)
 	buxton_key_free(key);
 }
 
-START_TEST(buxton_get_label_check)
+START_TEST(buxton_get_privilege_check)
 {
 	BuxtonClient c = NULL;
 
@@ -513,14 +503,14 @@ START_TEST(buxton_get_label_check)
 	fail_if(buxton_open(&c) == -1,
 		"Open failed with daemon.");
 
-	fail_if(buxton_get_label(c, group,
-				 client_get_label_test,
+	fail_if(buxton_get_privilege(c, group,
+				 client_get_priv_test,
 				 "*", true),
-		"Retrieving label for group failed.");
-	fail_if(buxton_get_label(c, group,
-				 client_get_label_test,
+		"Retrieving prvilege for group failed.");
+	fail_if(buxton_get_privilege(c, group,
+				 client_get_priv_test,
 				 "*", true),
-		"Retrieving label for key-name failed.");
+		"Retrieving privilege for key-name failed.");
 
 	buxton_key_free(group);
 	buxton_key_free(key);
@@ -671,57 +661,57 @@ START_TEST(parse_list_check)
 	fail_if(parse_list(BUXTON_CONTROL_GET, 3, l1, &key, &value),
 		"Parsed bad get type 7");
 
-	fail_if(parse_list(BUXTON_CONTROL_GET_LABEL, 4, l2, &key, &value),
-		"Parsed bad get label argument count");
+	fail_if(parse_list(BUXTON_CONTROL_GET_PRIV, 4, l2, &key, &value),
+		"Parsed bad get privilege argument count");
 	l1[0].type = BUXTON_TYPE_INT32;
 	l1[1].type = BUXTON_TYPE_STRING;
 	l1[2].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_GET_LABEL, 3, l1, &key, &value),
-		"Parsed bad get label type 1");
+	fail_if(parse_list(BUXTON_CONTROL_GET_PRIV, 3, l1, &key, &value),
+		"Parsed bad get privilege type 1");
 	l1[0].type = BUXTON_TYPE_STRING;
 	l1[1].type = BUXTON_TYPE_FLOAT;
 	l1[2].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_GET_LABEL, 3, l1, &key, &value),
-		"Parsed bad get label type 2");
+	fail_if(parse_list(BUXTON_CONTROL_GET_PRIV, 3, l1, &key, &value),
+		"Parsed bad get privilege type 2");
 	l1[0].type = BUXTON_TYPE_STRING;
 	l1[1].type = BUXTON_TYPE_STRING;
 	l1[2].type = BUXTON_TYPE_BOOLEAN;
-	fail_if(parse_list(BUXTON_CONTROL_GET_LABEL, 3, l1, &key, &value),
-		"Parsed bad get label type 3");
+	fail_if(parse_list(BUXTON_CONTROL_GET_PRIV, 3, l1, &key, &value),
+		"Parsed bad get privilege type 3");
 	l1[0].type = BUXTON_TYPE_STRING;
 	l1[1].type = BUXTON_TYPE_STRING;
 	l1[2].type = BUXTON_TYPE_STRING;
 	l1[0].store.d_string = buxton_string_pack("s5");
 	l1[1].store.d_string = buxton_string_pack("s6");
 	l1[2].store.d_string = buxton_string_pack("s7");
-	fail_if(!parse_list(BUXTON_CONTROL_GET_LABEL, 3, l1, &key, &value),
-		"Unable to parse valid get label 1");
+	fail_if(!parse_list(BUXTON_CONTROL_GET_PRIV, 3, l1, &key, &value),
+		"Unable to parse valid get privilege 1");
 	fail_if(!streq(key.layer.value, l1[0].store.d_string.value),
-		"Failed to set correct get label layer 1");
+		"Failed to set correct get privilege layer 1");
 	fail_if(!streq(key.group.value, l1[1].store.d_string.value),
-		"Failed to set correct get label group 1");
+		"Failed to set correct get privilege group 1");
 	fail_if(!streq(key.name.value, l1[2].store.d_string.value),
-		"Failed to set correct get label name");
+		"Failed to set correct get privilege name");
 	fail_if(key.type != BUXTON_TYPE_UNSET,
-		"Failed to set correct get label type 1");
+		"Failed to set correct get privilege type 1");
 	l1[0].store.d_string = buxton_string_pack("s6");
 	l1[1].store.d_string = buxton_string_pack("s6");
-	fail_if(!parse_list(BUXTON_CONTROL_GET_LABEL, 2, l1, &key, &value),
-		"Unable to parse valid get label 2");
+	fail_if(!parse_list(BUXTON_CONTROL_GET_PRIV, 2, l1, &key, &value),
+		"Unable to parse valid get privilege 2");
 	fail_if(!streq(key.layer.value, l1[0].store.d_string.value),
-		"Failed to set correct get label layer 2");
+		"Failed to set correct get privilege layer 2");
 	fail_if(!streq(key.group.value, l1[1].store.d_string.value),
-		"Failed to set correct get label group 2");
+		"Failed to set correct get privilege group 2");
 	fail_if(key.type != BUXTON_TYPE_UNSET,
-		"Failed to set correct get label type 2");
+		"Failed to set correct get privilege type 2");
 	l1[0].type = BUXTON_TYPE_INT32;
 	l1[1].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_GET_LABEL, 2, l1, &key, &value),
-		"Parsed bad get label type 4");
+	fail_if(parse_list(BUXTON_CONTROL_GET_PRIV, 2, l1, &key, &value),
+		"Parsed bad get privilege type 4");
 	l1[0].type = BUXTON_TYPE_STRING;
 	l1[1].type = BUXTON_TYPE_FLOAT;
-	fail_if(parse_list(BUXTON_CONTROL_GET_LABEL, 2, l1, &key, &value),
-		"Parsed bad get label type 5");
+	fail_if(parse_list(BUXTON_CONTROL_GET_PRIV, 2, l1, &key, &value),
+		"Parsed bad get privilege type 5");
 
 	fail_if(parse_list(BUXTON_CONTROL_SET, 1, l2, &key, &value),
 		"Parsed bad set argument count");
@@ -807,63 +797,63 @@ START_TEST(parse_list_check)
 	fail_if(key.type != l2[3].store.d_uint32,
 		"Failed to set correct unset type 1");
 
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 1, l2, &key, &value),
-		"Parsed bad set label argument count");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 1, l2, &key, &value),
+		"Parsed bad set privilege argument count");
 	l1[0].type = BUXTON_TYPE_INT32;
 	l1[1].type = BUXTON_TYPE_STRING;
 	l1[2].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 3, l1, &key, &value),
-		"Parsed bad set label type 1");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 3, l1, &key, &value),
+		"Parsed bad set privilege type 1");
 	l1[0].type = BUXTON_TYPE_STRING;
 	l1[1].type = BUXTON_TYPE_FLOAT;
 	l1[2].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 3, l1, &key, &value),
-		"Parsed bad set label type 2");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 3, l1, &key, &value),
+		"Parsed bad set privilege type 2");
 	l1[0].type = BUXTON_TYPE_STRING;
 	l1[1].type = BUXTON_TYPE_STRING;
 	l1[2].type = BUXTON_TYPE_BOOLEAN;
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 3, l1, &key, &value),
-		"Parsed bad set label type 3");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 3, l1, &key, &value),
+		"Parsed bad set privilege type 3");
 	l1[0].type = BUXTON_TYPE_STRING;
 	l1[1].type = BUXTON_TYPE_STRING;
 	l1[2].type = BUXTON_TYPE_STRING;
 	l1[0].store.d_string = buxton_string_pack("s14");
 	l1[1].store.d_string = buxton_string_pack("s15");
 	l1[2].store.d_string = buxton_string_pack("*");
-	fail_if(!parse_list(BUXTON_CONTROL_SET_LABEL, 3, l1, &key, &value),
-		"Unable to parse valid set label 1");
+	fail_if(!parse_list(BUXTON_CONTROL_SET_PRIV, 3, l1, &key, &value),
+		"Unable to parse valid set privilege 1");
 	fail_if(!streq(key.layer.value, l1[0].store.d_string.value),
-		"Failed to set correct set label layer 1");
+		"Failed to set correct set privilege layer 1");
 	fail_if(!streq(key.group.value, l1[1].store.d_string.value),
-		"Failed to set correct set label group 1");
+		"Failed to set correct set privilege group 1");
 	fail_if(!streq(value->store.d_string.value, l1[2].store.d_string.value),
-		"Failed to set correct set label label 1");
+		"Failed to set correct set privilege label 1");
 	fail_if(key.type != BUXTON_TYPE_UNSET,
-		"Failed to set key type in set label");
+		"Failed to set key type in set privilege");
 	l2[0].type = BUXTON_TYPE_INT32;
 	l2[1].type = BUXTON_TYPE_STRING;
 	l2[2].type = BUXTON_TYPE_STRING;
 	l2[3].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 4, l2, &key, &value),
-		"Parsed bad set label type 4");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 4, l2, &key, &value),
+		"Parsed bad set privilege type 4");
 	l2[0].type = BUXTON_TYPE_STRING;
 	l2[1].type = BUXTON_TYPE_FLOAT;
 	l2[2].type = BUXTON_TYPE_STRING;
 	l2[3].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 4, l2, &key, &value),
-		"Parsed bad set label type 5");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 4, l2, &key, &value),
+		"Parsed bad set privilege type 5");
 	l2[0].type = BUXTON_TYPE_STRING;
 	l2[1].type = BUXTON_TYPE_STRING;
 	l2[2].type = BUXTON_TYPE_BOOLEAN;
 	l2[3].type = BUXTON_TYPE_STRING;
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 4, l2, &key, &value),
-		"Parsed bad set label type 6");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 4, l2, &key, &value),
+		"Parsed bad set privilege type 6");
 	l2[0].type = BUXTON_TYPE_STRING;
 	l2[1].type = BUXTON_TYPE_STRING;
 	l2[2].type = BUXTON_TYPE_STRING;
 	l2[3].type = BUXTON_TYPE_UINT32;
-	fail_if(parse_list(BUXTON_CONTROL_SET_LABEL, 4, l2, &key, &value),
-		"Parsed bad set label type 7");
+	fail_if(parse_list(BUXTON_CONTROL_SET_PRIV, 4, l2, &key, &value),
+		"Parsed bad set privilege type 7");
 	l2[0].type = BUXTON_TYPE_STRING;
 	l2[1].type = BUXTON_TYPE_STRING;
 	l2[2].type = BUXTON_TYPE_STRING;
@@ -872,16 +862,16 @@ START_TEST(parse_list_check)
 	l2[1].store.d_string = buxton_string_pack("x2");
 	l2[2].store.d_string = buxton_string_pack("x3");
 	l2[3].store.d_string = buxton_string_pack("x4");
-	fail_if(!parse_list(BUXTON_CONTROL_SET_LABEL, 4, l2, &key, &value),
-		"Unable to parse valid set label 2");
+	fail_if(!parse_list(BUXTON_CONTROL_SET_PRIV, 4, l2, &key, &value),
+		"Unable to parse valid set privilege 2");
 	fail_if(!streq(key.layer.value, l2[0].store.d_string.value),
-		"Failed to set correct set label layer 2");
+		"Failed to set correct set privilege layer 2");
 	fail_if(!streq(key.group.value, l2[1].store.d_string.value),
-		"Failed to set correct set label group 2");
+		"Failed to set correct set privilege group 2");
 	fail_if(!streq(key.name.value, l2[2].store.d_string.value),
-		"Failed to set correct set label name 2");
+		"Failed to set correct set privilege name 2");
 	fail_if(!streq(value->store.d_string.value, l2[3].store.d_string.value),
-		"Failed to set correct set label label 2");
+		"Failed to set correct set privilege label 2");
 
 	fail_if(parse_list(BUXTON_CONTROL_CREATE_GROUP, 1, l3, &key, &value),
 		"Parsed bad create group argument count");
@@ -944,10 +934,7 @@ START_TEST(create_group_check)
 		"Failed to open buxton direct connection");
 
 	client.cred.uid = getuid();
-	if (use_smack())
-		client.smack_label = &clabel;
-	else
-		client.smack_label = NULL;
+	client.smack_label = &clabel;
 	server.buxton.client.uid = 0;
 
 	key.layer = buxton_string_pack("test-gdbm-user");
@@ -981,10 +968,7 @@ START_TEST(remove_group_check)
 		"Failed to open buxton direct connection");
 
 	client.cred.uid = getuid();
-	if (use_smack())
-		client.smack_label = &clabel;
-	else
-		client.smack_label = NULL;
+	client.smack_label = &clabel;
 	server.buxton.client.uid = 0;
 
 	key.layer = buxton_string_pack("base");
@@ -998,7 +982,7 @@ START_TEST(remove_group_check)
 }
 END_TEST
 
-START_TEST(set_label_check)
+START_TEST(set_priv_check)
 {
 	_BuxtonKey key = { {0}, {0}, {0}, 0};
 	BuxtonData value;
@@ -1011,10 +995,7 @@ START_TEST(set_label_check)
 		"Failed to open buxton direct connection");
 
 	client.cred.uid = getuid();
-	if (use_smack())
-		client.smack_label = &clabel;
-	else
-		client.smack_label = NULL;
+	client.smack_label = &clabel;
 	server.buxton.client.uid = 0;
 	key.layer = buxton_string_pack("test-gdbm");
 	key.group = buxton_string_pack("daemon-check");
@@ -1022,8 +1003,8 @@ START_TEST(set_label_check)
 	value.type = BUXTON_TYPE_STRING;
 	value.store.d_string = buxton_string_pack("*");
 
-	set_label(&server, &client, &key, &value, &status);
-	fail_if(status != 0, "Failed to set label");
+	set_priv(&server, &client, &key, &value, &status);
+	fail_if(status != 0, "Failed to set privilege");
 	buxton_direct_close(&server.buxton);
 }
 END_TEST
@@ -1043,10 +1024,7 @@ START_TEST(set_value_check)
 	client.cred.uid = getuid();
 	server.buxton.client.uid = 0;
 
-	if (use_smack())
-		client.smack_label = &clabel;
-	else
-		client.smack_label = NULL;
+	client.smack_label = &clabel;
 
 	key.layer = buxton_string_pack("test-gdbm-user");
 	key.group = buxton_string_pack("daemon-check");
@@ -1079,13 +1057,8 @@ START_TEST(get_value_check)
 	fail_if(!buxton_direct_open(&server.buxton),
 		"Failed to open buxton direct connection");
 
-	fail_if(!buxton_cache_smack_rules(),
-		"Failed to cache smack rules");
 	client.cred.uid = getuid();
-	if (use_smack())
-		client.smack_label = &clabel;
-	else
-		client.smack_label = NULL;
+	client.smack_label = &clabel;
 	server.buxton.client.uid = 0;
 	key.layer = buxton_string_pack("test-gdbm-user");
 	key.group = buxton_string_pack("daemon-check");
@@ -1115,10 +1088,10 @@ START_TEST(get_value_check)
 }
 END_TEST
 
-START_TEST(get_label_check)
+START_TEST(get_priv_check)
 {
 	_BuxtonKey key = { {0}, {0}, {0}, 0};
-	BuxtonData *label;
+	BuxtonData *priv;
 	client_list_item client;
 	int32_t status;
 	BuxtonDaemon server;
@@ -1128,23 +1101,20 @@ START_TEST(get_label_check)
 		"Failed to open buxton direct connection");
 
 	client.cred.uid = getuid();
-	if (use_smack())
-		client.smack_label = &clabel;
-	else
-		client.smack_label = NULL;
+	client.smack_label = &clabel;
 	server.buxton.client.uid = 0;
 	key.layer = buxton_string_pack("test-gdbm");
 	key.group = buxton_string_pack("daemon-check");
 	key.type = BUXTON_TYPE_STRING;
 
-	label = get_label(&server, &client, &key, &status);
-	fail_if(!label, "Failed to get label");
-	fail_if(status != 0, "Failed to set label");
-	fail_if(label->type != BUXTON_TYPE_STRING,
-		"Failed to get correct label type");
-	fail_if(!streq(label->store.d_string.value, "*"),
-		"Failed to get correct label");
-	free(label);
+	priv = get_priv(&server, &client, &key, &status);
+	fail_if(!priv, "Failed to get privilege");
+	fail_if(status != 0, "Failed to set privilege");
+	fail_if(priv->type != BUXTON_TYPE_STRING,
+		"Failed to get correct privilege type");
+	fail_if(!streq(priv->store.d_string.value, "*"),
+		"Failed to get correct privilege");
+	free(priv);
 	buxton_direct_close(&server.buxton);
 }
 END_TEST
@@ -1158,12 +1128,7 @@ START_TEST(register_notification_check)
 	BuxtonDaemon server;
 	uint32_t msgid;
 
-	fail_if(!buxton_cache_smack_rules(),
-		"Failed to cache smack rules");
-	if (use_smack())
-		client.smack_label = &clabel;
-	else
-		client.smack_label = NULL;
+	client.smack_label = &clabel;
 	client.cred.uid = 1002;
 	fail_if(!buxton_direct_open(&server.buxton),
 		"Failed to open buxton direct connection");
@@ -1227,7 +1192,6 @@ START_TEST(buxtond_handle_message_error_check)
 	slabel = buxton_string_pack("_");
 	cl.smack_label = &slabel;
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 
@@ -1290,13 +1254,9 @@ START_TEST(buxtond_handle_message_create_group_check)
 
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 	daemon.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -1401,13 +1361,9 @@ START_TEST(buxtond_handle_message_remove_group_check)
 	fail_if(!out_list, "Failed to allocate list");
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 	daemon.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -1453,7 +1409,7 @@ START_TEST(buxtond_handle_message_remove_group_check)
 }
 END_TEST
 
-START_TEST(buxtond_handle_message_set_label_check)
+START_TEST(buxtond_handle_message_set_priv_check)
 {
 	BuxtonDaemon daemon;
 	BuxtonString slabel;
@@ -1480,13 +1436,9 @@ START_TEST(buxtond_handle_message_set_label_check)
 	fail_if(!out_list, "Failed to allocate list");
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 	daemon.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -1507,23 +1459,23 @@ START_TEST(buxtond_handle_message_set_label_check)
 	r = buxton_array_add(out_list, &data3);
 	fail_if(!r, "Failed to add element to array");
 
-	size = buxton_serialize_message(&cl.data, BUXTON_CONTROL_SET_LABEL, 0,
+	size = buxton_serialize_message(&cl.data, BUXTON_CONTROL_SET_PRIV, 0,
 					out_list);
 	fail_if(size == 0, "Failed to serialize message");
 	r = buxtond_handle_message(&daemon, &cl, size);
 	free(cl.data);
-	fail_if(!r, "Failed to handle set label message");
+	fail_if(!r, "Failed to handle set privilege message");
 
 	s = read(client, buf, 4096);
 	fail_if(s < 0, "Read from client failed");
 	csize = buxton_deserialize_message(buf, &msg, (size_t)s, &msgid, &list);
-	fail_if(csize != 1, "Failed to get correct response to set label");
+	fail_if(csize != 1, "Failed to get correct response to set privilege");
 	fail_if(msg != BUXTON_CONTROL_STATUS,
 		"Failed to get correct control type");
 	fail_if(list[0].type != BUXTON_TYPE_INT32,
 		"Failed to get correct indicator type");
 	fail_if(list[0].store.d_int32 != 0,
-		"Failed to set label");
+		"Failed to set privilege");
 	fail_if(msgid != 0, "Failed to get correct message id");
 
 	free(list);
@@ -1563,13 +1515,9 @@ START_TEST(buxtond_handle_message_set_value_check)
 	fail_if(!out_list, "Failed to allocate list");
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 	daemon.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -1653,13 +1601,9 @@ START_TEST(buxtond_handle_message_get_check)
 
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = getuid();
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 
@@ -1741,7 +1685,7 @@ START_TEST(buxtond_handle_message_get_check)
 }
 END_TEST
 
-START_TEST(buxtond_handle_message_get_label_check)
+START_TEST(buxtond_handle_message_get_priv_check)
 {
 	BuxtonDaemon daemon;
 	BuxtonString slabel;
@@ -1768,13 +1712,9 @@ START_TEST(buxtond_handle_message_get_label_check)
 	fail_if(!out_list, "Failed to allocate list");
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 	daemon.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -1791,27 +1731,27 @@ START_TEST(buxtond_handle_message_get_label_check)
 	r = buxton_array_add(out_list, &data2);
 	fail_if(!r, "Failed to add element to array");
 
-	size = buxton_serialize_message(&cl.data, BUXTON_CONTROL_GET_LABEL, 0,
+	size = buxton_serialize_message(&cl.data, BUXTON_CONTROL_GET_PRIV, 0,
 					out_list);
 	fail_if(size == 0, "Failed to serialize message");
 	r = buxtond_handle_message(&daemon, &cl, size);
 	free(cl.data);
-	fail_if(!r, "Failed to handle get label message");
+	fail_if(!r, "Failed to handle get privilege message");
 
 	s = read(client, buf, 4096);
 	fail_if(s < 0, "Read from client failed");
 	csize = buxton_deserialize_message(buf, &msg, (size_t)s, &msgid, &list);
-	fail_if(csize != 2, "Failed to get correct response to get label");
+	fail_if(csize != 2, "Failed to get correct response to get privilege");
 	fail_if(msg != BUXTON_CONTROL_STATUS,
 		"Failed to get correct control type");
 	fail_if(msgid != 0, "Failed to get correct message id");
 	fail_if(list[0].type != BUXTON_TYPE_INT32,
 		"Failed to get correct indicator type");
 	fail_if(list[0].store.d_int32 != 0,
-		"Failed to get label");
-	fail_if(list[1].type != BUXTON_TYPE_STRING, "Failed to get correct label type");
+		"Failed to get privilege");
+	fail_if(list[1].type != BUXTON_TYPE_STRING, "Failed to get correct privilege type");
 	fail_if(!streq(list[1].store.d_string.value, "*"),
-		"Failed to get correct label");
+		"Failed to get correct privilege");
 
 	free(list);
 	cleanup_callbacks();
@@ -1846,17 +1786,13 @@ START_TEST(buxtond_handle_message_notify_check)
 
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.buxton.client.uid = 1001;
 	daemon.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
 	fail_if(!daemon.notify_mapping, "Failed to allocate hashmap");
 	daemon.client_key_mapping = hashmap_new(uint64_hash_func, uint64_compare_func);
 	fail_if(!daemon.client_key_mapping, "Failed to allocate hashmap");
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 
@@ -1948,13 +1884,9 @@ START_TEST(buxtond_handle_message_unset_check)
 
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.buxton.client.uid = 1001;
-	fail_if(!buxton_cache_smack_rules(), "Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 	daemon.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -2027,18 +1959,13 @@ START_TEST(buxtond_notify_clients_check)
 
 	cl.fd = server;
 	slabel = buxton_string_pack("_");
-	if (use_smack())
-		cl.smack_label = &slabel;
-	else
-		cl.smack_label = NULL;
+	cl.smack_label = &slabel;
 	cl.cred.uid = 1002;
 	daemon.notify_mapping = hashmap_new(string_hash_func,
 					    string_compare_func);
 	fail_if(!daemon.notify_mapping, "Failed to allocate hashmap");
 	daemon.client_key_mapping = hashmap_new(uint64_hash_func, uint64_compare_func);
 	fail_if(!daemon.client_key_mapping, "Failed to allocate hashmap");
-	fail_if(!buxton_cache_smack_rules(),
-		"Failed to cache Smack rules");
 	fail_if(!buxton_direct_open(&daemon.buxton),
 		"Failed to open buxton direct connection");
 
@@ -2086,8 +2013,8 @@ START_TEST(buxtond_notify_clients_check)
 	key.name.length = 0;
 	r = buxton_direct_create_group(&daemon.buxton, &key, NULL);
 	fail_if(!r, "Unable to create group");
-	r = buxton_direct_set_label(&daemon.buxton, &key, &slabel);
-	fail_if(!r, "Unable set group label");
+	r = buxton_direct_set_privilege(&daemon.buxton, &key, &slabel);
+	fail_if(!r, "Unable set group privilege");
 
 	value1.type = BUXTON_TYPE_INT32;
 	value1.store.d_int32 = 1;
@@ -2736,7 +2663,7 @@ START_TEST(buxtond_fuzz_commands)
 	pid_t pid;
 	sigset_t sigset;
 	struct sigaction sa;
-	char *random_group, *random_layer, *random_label, *random_value, *random_name;
+	char *random_group, *random_layer, *random_priv, *random_value, *random_name;
 	int max_length = 32768;
 	unlink(buxton_socket());
 
@@ -2857,10 +2784,10 @@ START_TEST(buxtond_fuzz_commands)
 			key = buxton_key_create("tempgroup", "name", "base", BUXTON_TYPE_STRING);
 			fail_if(!key, "Failed to create key");
 
-			// set the a correct label and randomized value
-			fprintf(f, "Set label: Group: tgroup\t Layer: base\t Value: %s\n", random_value);
+			// set the a correct privilege and randomized value
+			fprintf(f, "Set privilege: Group: tgroup\t Layer: base\t Value: %s\n", random_value);
 			fflush(f);
-			fail_if(buxton_set_label(c, group, "*", NULL, NULL, true), "Setting label in buxton failed.");
+			fail_if(buxton_set_privilege(c, group, "*", NULL, NULL, true), "Setting privilege in buxton failed.");
 
 			if (buxton_set_value(c, key, random_value, NULL, "tgroup", true)) {
 				fprintf(f, "3: Value was set!\n");
@@ -2871,24 +2798,24 @@ START_TEST(buxtond_fuzz_commands)
 			buxton_key_free(group);
 			buxton_key_free(key);
 
-			//set a random label on an existing group
-			random_label = random_string(3);
+			//set a random privilege on an existing group
+			random_priv = random_string(3);
 			group = buxton_key_create("tempgroup", NULL, "base", BUXTON_TYPE_STRING);
 			fail_if(!group, "Failed to create key for group");
 
-			fprintf(f, "Set label: Group: tempgroup\t Layer: base\t Label: %s\n", random_label);
-			if (buxton_set_label(c, group, random_label, NULL, group, true)) {
+			fprintf(f, "Set privilege: Group: tempgroup\t Layer: base\t Label: %s\n", random_priv);
+			if (buxton_set_privilege(c, group, random_priv, NULL, group, true)) {
 				fprintf(f, "3: Label was set!\n");
 			} else {
 				fprintf(f, "3: Label was NOT set.\n");
 			}
 			fflush(f);
 
-			//set random value/label on name
+			//set random value/privilege on name
 			BuxtonKey name = buxton_key_create("tempgroup", "name", "base", BUXTON_TYPE_STRING);
 			fail_if(!name, "Failed to create key for name");
 
-			fprintf(f, "Set label and value: Group: tempgroup\t Layer: base\t Name: name\t Value: %s\t Label: %s \n", random_value, random_label);
+			fprintf(f, "Set privilege and value: Group: tempgroup\t Layer: base\t Name: name\t Value: %s\t Label: %s \n", random_value, random_label);
 			if (buxton_set_value(c, name, random_value, NULL, NULL, true)) {
 				fprintf(f, "4: Value on name was set!\n");
 			} else {
@@ -2897,7 +2824,7 @@ START_TEST(buxtond_fuzz_commands)
 			free(random_value);
 			fflush(f);
 
-			if (buxton_set_label(c, name, random_label, NULL, name, true)) {
+			if (buxton_set_privilege(c, name, random_priv, NULL, name, true)) {
 				fprintf(f, "4: Label on name was set!\n");
 			} else {
 				fprintf(f, "4: Label on name was NOT set.\n");
@@ -2905,7 +2832,7 @@ START_TEST(buxtond_fuzz_commands)
 			fflush(f);
 			buxton_key_free(group);
 			buxton_key_free(name);
-			free(random_label);
+			free(random_priv);
 
 			// remove name from group
 			key = buxton_key_create(random_group, random_name, random_layer, BUXTON_TYPE_STRING);
@@ -2987,28 +2914,28 @@ daemon_suite(void)
 	tcase_add_test(tc, buxton_create_group_check);
 	tcase_add_test(tc, buxton_remove_group_check);
 	tcase_add_test(tc, buxton_set_value_check);
-	tcase_add_test(tc, buxton_set_label_check);
+	tcase_add_test(tc, buxton_set_privilege_check);
 	tcase_add_test(tc, buxton_get_value_for_layer_check);
 	tcase_add_test(tc, buxton_get_value_check);
-	tcase_add_test(tc, buxton_get_label_check);
+	tcase_add_test(tc, buxton_get_privilege_check);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("buxton_daemon_functions");
 	tcase_add_test(tc, parse_list_check);
 	tcase_add_test(tc, create_group_check);
 	tcase_add_test(tc, remove_group_check);
-	tcase_add_test(tc, set_label_check);
+	tcase_add_test(tc, set_priv_check);
 	tcase_add_test(tc, set_value_check);
 	tcase_add_test(tc, get_value_check);
-	tcase_add_test(tc, get_label_check);
+	tcase_add_test(tc, get_priv_check);
 	tcase_add_test(tc, register_notification_check);
 	tcase_add_test(tc, buxtond_handle_message_error_check);
 	tcase_add_test(tc, buxtond_handle_message_create_group_check);
 	tcase_add_test(tc, buxtond_handle_message_remove_group_check);
-	tcase_add_test(tc, buxtond_handle_message_set_label_check);
+	tcase_add_test(tc, buxtond_handle_message_set_priv_check);
 	tcase_add_test(tc, buxtond_handle_message_set_value_check);
 	tcase_add_test(tc, buxtond_handle_message_get_check);
-	tcase_add_test(tc, buxtond_handle_message_get_label_check);
+	tcase_add_test(tc, buxtond_handle_message_get_priv_check);
 	tcase_add_test(tc, buxtond_handle_message_notify_check);
 	tcase_add_test(tc, buxtond_handle_message_unset_check);
 	tcase_add_test(tc, buxtond_notify_clients_check);

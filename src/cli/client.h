@@ -86,16 +86,16 @@ bool cli_create_db(BuxtonControl *control,
 	__attribute__((warn_unused_result));
 
 /**
- * Set a label in Buxton
+ * Set a privilege in Buxton
  * @param control An initialized control structure
- * @param type Type of label being set (unused)
- * @param one Layer of label being set
- * @param two Group of the label being set
- * @param three Name of the label to set
- * @param four Label of the label to set
+ * @param type Type of privilege being set (unused)
+ * @param one Layer of privilege being set
+ * @param two Group of the privilege being set
+ * @param three Name of the privilege to set
+ * @param four Label of the privilege to set
  * @returns bool indicating success or failure
  */
-bool cli_set_label(BuxtonControl *control,
+bool cli_set_privilege(BuxtonControl *control,
 		   __attribute__((unused)) BuxtonDataType type,
 		   char *one, char *two, char *three, char *four)
 	__attribute__((warn_unused_result));
@@ -131,16 +131,16 @@ bool cli_remove_group(BuxtonControl *control,
 	__attribute__((warn_unused_result));
 
 /**
- * Get a label from Buxton
+ * Get a privilege from Buxton
  * @param control An initialized control structure
- * @param type Type of label being sought (unused)
- * @param one Layer of the label being sought
- * @param two Group of the label being sought
- * @param two Name of the label being sought (optional)
+ * @param type Type of privilege being sought (unused)
+ * @param one Layer of the privilege being sought
+ * @param two Group of the privilege being sought
+ * @param two Name of the privilege being sought (optional)
  * @param four NULL (unused)
  * @returns bool indicating success or failure
  */
-bool cli_get_label(BuxtonControl *control,
+bool cli_get_privilege(BuxtonControl *control,
 		   __attribute__((unused)) BuxtonDataType type,
 		   char *one, char *two, char *three,
 		   __attribute__((unused)) char *four)

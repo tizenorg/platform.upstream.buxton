@@ -43,7 +43,7 @@ struct keyrec {
 /* structure for storing values */
 struct valrec {
 	BuxtonData data;    /**< Recorded data */
-	BuxtonString label; /**< Recorded label */
+	BuxtonString privilege; /**< Recorded privilege */
 };
 
 /* creates a keyrec from the key */
@@ -115,16 +115,16 @@ static void free_valrec(struct valrec *item)
 		if (item->data.type == BUXTON_TYPE_STRING) {
 			free(item->data.store.d_string.value);
 		}
-		free(item->label.value);
+		free(item->privilege.value);
 		free(item);
 	}
 }
 
 static bool set_valrec(struct valrec *item, BuxtonData *data,
-			      BuxtonString *label)
+			      BuxtonString *privilege)
 {
 	char *sdata;
-	char *slabel;
+	char *spriv;
 
 	/* allocate data if needed */
 	if (data && data->type == BUXTON_TYPE_STRING &&
@@ -139,16 +139,16 @@ static bool set_valrec(struct valrec *item, BuxtonData *data,
 		sdata = NULL;
 	}
 
-	/* allocate label if needed */
-	if (label && label->value) {
-		slabel = malloc(label->length);
-		if (!slabel) {
+	/* allocate privilege if needed */
+	if (privilege && privilege->value) {
+		spriv = malloc(privilege->length);
+		if (!spriv) {
 			free(sdata);
 			return false;
 		}
-		memcpy(slabel, label->value, label->length);
+		memcpy(spriv, privilege->value, privilege->length);
 	} else {
-		slabel = NULL;
+		spriv = NULL;
 	}
 
 	/* copy now */
@@ -162,10 +162,10 @@ static bool set_valrec(struct valrec *item, BuxtonData *data,
 		}
 	}
 
-	if (label) {
-		free(item->label.value);
-		item->label.length = label->length;
-		item->label.value = slabel;
+	if (privilege) {
+		free(item->privilege.value);
+		item->privilege.length = privilege->length;
+		item->privilege.value = spriv;
 	}
 
 	return true;
@@ -203,7 +203,7 @@ static Hashmap *_db_for_resource(BuxtonLayer *layer)
 }
 
 static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *label)
+		      BuxtonString *privilege)
 {
 	Hashmap *db;
 	int ret;
@@ -212,7 +212,7 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 
 	assert(layer);
 	assert(key);
-	assert(label);
+	assert(privilege);
 
 	db = _db_for_resource(layer);
 	if (!db) {
@@ -228,7 +228,7 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	valrec = hashmap_get(db, keyrec);
 	if (valrec) {
 		free_keyrec(keyrec);
-		if (!set_valrec(valrec, data, label)) {
+		if (!set_valrec(valrec, data, privilege)) {
 			abort();
 		}
 	} else {
@@ -240,7 +240,7 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 		if (!valrec) {
 			abort();
 		}
-		if (!set_valrec(valrec, data, label) ||
+		if (!set_valrec(valrec, data, privilege) ||
 		    hashmap_put(db, keyrec, valrec) != 1) {
 			abort();
 		}
@@ -253,7 +253,7 @@ end:
 }
 
 static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *label)
+		      BuxtonString *privilege)
 {
 	Hashmap *db;
 	int ret;
@@ -262,7 +262,7 @@ static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 
 	assert(layer);
 	assert(key);
-	assert(label);
+	assert(privilege);
 	assert(data);
 
 	db = _db_for_resource(layer);
@@ -298,7 +298,7 @@ static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 		abort();
 	}
 
-	if (!buxton_string_copy(&valrec->label, label)) {
+	if (!buxton_string_copy(&valrec->privilege, privilege)) {
 		abort();
 	}
 
@@ -391,7 +391,7 @@ end:
 static int unset_value(BuxtonLayer *layer,
 			_BuxtonKey *key,
 			__attribute__((unused)) BuxtonData *data,
-			__attribute__((unused)) BuxtonString *label)
+			__attribute__((unused)) BuxtonString *privilege)
 {
 	assert(layer);
 	assert(key);

@@ -37,7 +37,7 @@
 
 /**
  * Minimum size of serialized BuxtonData
- * 2 is the minimum number of characters in a valid SMACK label
+ * 2 is the minimum number of characters in a valid privilege
  * 0 is the mimimum number of characters in a valid value (NULL STRING)
  */
 #define BXT_MINIMUM_SIZE sizeof(BuxtonDataType) \
@@ -62,11 +62,11 @@
 /**
  * Serialize data internally for backend consumption
  * @param source Data to be serialized
- * @param label Label to be serialized
+ * @param privilege Privilege to be serialized
  * @param target Pointer to store serialized data in
  * @return a size_t value, indicating the size of serialized data
  */
-size_t buxton_serialize(BuxtonData *source, BuxtonString *label,
+size_t buxton_serialize(BuxtonData *source, BuxtonString *privilege,
 			uint8_t **target)
 	__attribute__((warn_unused_result));
 
@@ -74,10 +74,10 @@ size_t buxton_serialize(BuxtonData *source, BuxtonString *label,
  * Deserialize internal data for client consumption
  * @param source Serialized data pointer
  * @param target A pointer where the deserialize data will be stored
- * @param label A pointer where the deserialize label will be stored
+ * @param privilege A pointer where the deserialize privilege will be stored
  */
 void buxton_deserialize(uint8_t *source, BuxtonData *target,
-			BuxtonString *label);
+			BuxtonString *privilege);
 
 /**
  * Serialize an internal buxton message for wire communication

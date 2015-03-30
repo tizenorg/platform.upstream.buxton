@@ -93,6 +93,7 @@ int main(int argc, char **argv)
 	Command c_get_double, c_set_double;
 	Command c_get_bool, c_set_bool;
 	Command c_get_label, c_set_label;
+	Command c_get_priv, c_set_priv;
 	Command c_create_group, c_remove_group;
 	Command c_unset_value;
 	Command c_create_db;
@@ -201,14 +202,23 @@ int main(int argc, char **argv)
 				 4, 4, "layer group name value", &cli_set_value, BUXTON_TYPE_BOOLEAN };
 	hashmap_put(commands, c_set_bool.name, &c_set_bool);
 
-	/* SMACK labels */
-	c_get_label = (Command) { "get-label", "Get a value's label",
-				  2, 3, "layer group [name]", &cli_get_label, BUXTON_TYPE_UNSET };
+	/* Privilege */
+	c_get_priv = (Command) { "get-priv", "Get a value's privilege",
+				  2, 3, "layer group [name]", &cli_get_privilege, BUXTON_TYPE_UNSET };
+	hashmap_put(commands, c_get_priv.name, &c_get_priv);
+
+	c_set_priv = (Command) { "set-priv", "Set a value's privilege",
+				  3, 4, "layer group [name] privilege", &cli_set_privilege, BUXTON_TYPE_UNSET };
+	hashmap_put(commands, c_set_priv.name, &c_set_priv);
+
+	c_get_label = (Command) { "get-label", "Get a value's privilege",
+				  2, 3, "layer group [name]", &cli_get_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_get_label.name, &c_get_label);
 
-	c_set_label = (Command) { "set-label", "Set a value's label",
-				  3, 4, "layer group [name] label", &cli_set_label, BUXTON_TYPE_UNSET };
+	c_set_label = (Command) { "set-label", "Set a value's privilege",
+				  3, 4, "layer group [name] privilege", &cli_set_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_set_label.name, &c_set_label);
+
 
 	/* Group management */
 	c_create_group = (Command) { "create-group", "Create a group in a layer",

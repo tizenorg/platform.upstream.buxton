@@ -273,7 +273,7 @@ int buxton_set_value(BuxtonClient client,
 	return ret;
 }
 
-int buxton_set_label(BuxtonClient client,
+int buxton_set_privilege(BuxtonClient client,
 		     BuxtonKey key,
 		     const char *value,
 		     BuxtonCallback callback,
@@ -292,8 +292,50 @@ int buxton_set_label(BuxtonClient client,
 	/* discarding const until BuxtonString updated */
 	v = buxton_string_pack((char*)value);
 
-	r = buxton_wire_set_label((_BuxtonClient *)client, k, &v, callback,
+	r = buxton_wire_set_priv((_BuxtonClient *)client, k, &v, callback,
 				  data);
+	if (!r) {
+		return -1;
+	}
+
+	if (sync) {
+		ret = buxton_wire_get_response(client);
+		if (ret <= 0) {
+			ret = -1;
+		} else {
+			ret = 0;
+		}
+	}
+
+	return ret;
+}
+
+int buxton_set_label(BuxtonClient client,
+		     BuxtonKey key,
+		     const char *value,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	return buxton_set_privilege(client, key, value, callback, data, sync);
+}
+
+int buxton_get_privilege(BuxtonClient client,
+		     BuxtonKey key,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	bool r;
+	int ret = 0;
+	_BuxtonKey *k = (_BuxtonKey *)key;
+
+	if (!k || !k->group.value || !k->layer.value ||
+	    k->type <= BUXTON_TYPE_MIN || k->type >= BUXTON_TYPE_MAX) {
+		return EINVAL;
+	}
+
+	r = buxton_wire_get_priv((_BuxtonClient *)client, k, callback, data);
 	if (!r) {
 		return -1;
 	}
@@ -316,30 +358,7 @@ int buxton_get_label(BuxtonClient client,
 		     void *data,
 		     bool sync)
 {
-	bool r;
-	int ret = 0;
-	_BuxtonKey *k = (_BuxtonKey *)key;
-
-	if (!k || !k->group.value || !k->layer.value ||
-	    k->type <= BUXTON_TYPE_MIN || k->type >= BUXTON_TYPE_MAX) {
-		return EINVAL;
-	}
-
-	r = buxton_wire_get_label((_BuxtonClient *)client, k, callback, data);
-	if (!r) {
-		return -1;
-	}
-
-	if (sync) {
-		ret = buxton_wire_get_response(client);
-		if (ret <= 0) {
-			ret = -1;
-		} else {
-			ret = 0;
-		}
-	}
-
-	return ret;
+	return buxton_get_privilege(client, key, callback, data, sync);
 }
 
 int buxton_create_group(BuxtonClient client,
@@ -741,7 +760,7 @@ void *buxton_response_value(BuxtonResponse response)
 	}
 
 	type = buxton_response_type(response);
-	if (type == BUXTON_CONTROL_GET || type == BUXTON_CONTROL_GET_LABEL) {
+	if (type == BUXTON_CONTROL_GET || type == BUXTON_CONTROL_GET_PRIV) {
 		d = buxton_array_get(r->data, 1);
 	} else if (type == BUXTON_CONTROL_CHANGED) {
 		if (r->data->len) {
@@ -826,7 +845,7 @@ BuxtonDataType buxton_response_value_type(BuxtonResponse response)
 	}
 
 	type = buxton_response_type(response);
-	if (type == BUXTON_CONTROL_GET || type == BUXTON_CONTROL_GET_LABEL) {
+	if (type == BUXTON_CONTROL_GET || type == BUXTON_CONTROL_GET_PRIV) {
 		d = buxton_array_get(r->data, 1);
 	} else if (type == BUXTON_CONTROL_CHANGED) {
 		if (r->data->len) {

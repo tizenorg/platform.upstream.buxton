@@ -63,7 +63,7 @@ typedef enum BuxtonDataType {
 typedef enum BuxtonControlMessage {
 	BUXTON_CONTROL_MIN,
 	BUXTON_CONTROL_SET, /**<Set a value within Buxton */
-	BUXTON_CONTROL_SET_LABEL, /**<Set a label within Buxton */
+	BUXTON_CONTROL_SET_PRIV, /**<Set a privilege within Buxton */
 	BUXTON_CONTROL_CREATE_GROUP, /**<Create a group within Buxton */
 	BUXTON_CONTROL_REMOVE_GROUP, /**<Remove a group within Buxton */
 	BUXTON_CONTROL_GET, /**<Retrieve a value from Buxton */
@@ -73,7 +73,7 @@ typedef enum BuxtonControlMessage {
 	BUXTON_CONTROL_NOTIFY, /**<Register for notification */
 	BUXTON_CONTROL_UNNOTIFY, /**<Opt out of notifications */
 	BUXTON_CONTROL_CHANGED, /**<A key changed in Buxton */
-	BUXTON_CONTROL_GET_LABEL, /**<Get a label from Buxton */
+	BUXTON_CONTROL_GET_PRIV, /**<Get a privilege from Buxton */
 	BUXTON_CONTROL_LIST_NAMES, /**<List names within Buxton */
 	BUXTON_CONTROL_MAX
 } BuxtonControlMessage;
@@ -143,9 +143,7 @@ _bx_export_ int buxton_set_value(BuxtonClient client,
 	__attribute__((warn_unused_result));
 
 /**
- * Set a label within Buxton
- *
- * @note This is a privileged operation; the return value will be false for unprivileged clients.
+ * Deprecated. Use buxton_set_privilege
  *
  * @param client An open client connection
  * @param layer The layer to manipulate
@@ -157,6 +155,28 @@ _bx_export_ int buxton_set_value(BuxtonClient client,
  * @return An int value, indicating success of the operation
  */
 _bx_export_ int buxton_set_label(BuxtonClient client,
+				 BuxtonKey key,
+				 const char *value,
+				 BuxtonCallback callback,
+				 void *data,
+				 bool sync)
+	__attribute__((warn_unused_result));
+
+/**
+ * Set a privilege within Buxton
+ *
+ * @note This is a privileged operation; the return value will be false for unprivileged clients.
+ *
+ * @param client An open client connection
+ * @param layer The layer to manipulate
+ * @param key The key or group name
+ * @param value A struct containing the privilege to set
+ * @param callback A callback function to handle daemon reply
+ * @param data User data to be used with callback function
+ * @param sync Indicator for running a synchronous request
+ * @return An int value, indicating success of the operation
+ */
+_bx_export_ int buxton_set_privilege(BuxtonClient client,
 				 BuxtonKey key,
 				 const char *value,
 				 BuxtonCallback callback,
@@ -215,7 +235,7 @@ _bx_export_ int buxton_get_value(BuxtonClient client,
 	__attribute__((warn_unused_result));
 
 /**
- * Retrieve a label from Buxton
+ * Deprecated. Use buxton_get_privilege
  * @param client An open client connection
  * @param key The key or group to retrieve
  * @param callback A callback function to handle daemon reply
@@ -224,6 +244,22 @@ _bx_export_ int buxton_get_value(BuxtonClient client,
  * @return An int value, indicating success of the operation
  */
 _bx_export_ int buxton_get_label(BuxtonClient client,
+				 BuxtonKey key,
+				 BuxtonCallback callback,
+				 void *data,
+				 bool sync)
+	__attribute__((warn_unused_result));
+
+/**
+ * Retrieve a privilege from Buxton
+ * @param client An open client connection
+ * @param key The key or group to retrieve
+ * @param callback A callback function to handle daemon reply
+ * @param data User data to be used with callback function
+ * @param sync Indicator for running a synchronous request
+ * @return An int value, indicating success of the operation
+ */
+_bx_export_ int buxton_get_privilege(BuxtonClient client,
 				 BuxtonKey key,
 				 BuxtonCallback callback,
 				 void *data,

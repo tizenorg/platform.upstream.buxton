@@ -649,7 +649,6 @@ MANPAGE_FALSE
 MANPAGE_TRUE
 DEBUG_FALSE
 DEBUG_TRUE
-SMACK_LOAD_FILE
 BUXTON_SOCKET
 DB_PATH
 CONFPATH
@@ -803,7 +802,6 @@ with_module_dir
 with_config_path
 with_db_path
 with_socket_path
-with_smack_load_file
 enable_debug
 enable_manpages
 enable_coverage
@@ -1485,8 +1483,6 @@ Optional Packages:
   --with-db-path=DBPATH   path to buxton db files
   --with-socket-path=SOCKETPATH
                           path to buxton socket file
-  --with-smack-load-file=SMACKLOADFILE
-                          path to smack load2 file
 
 Some influential environment variables:
   CC          C compiler command
@@ -14418,17 +14414,6 @@ else
 fi
 
 BUXTON_SOCKET="${socketpath}"
-
-
-
-# Check whether --with-smack-load-file was given.
-if test "${with_smack_load_file+set}" = set; then :
-  withval=$with_smack_load_file; smack_load_file=${withval}
-else
-  smack_load_file="/sys/fs/smackfs/load2"
-fi
-
-SMACK_LOAD_FILE="${smack_load_file}"
 
 
 # Check whether --enable-debug was given.

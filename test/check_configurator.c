@@ -74,12 +74,6 @@ START_TEST(configurator_default_db_path)
 }
 END_TEST
 
-START_TEST(configurator_default_smack_load_file)
-{
-	default_test(buxton_smack_load_file(), (char*)_SMACK_LOAD_FILE, "buxton_smack_load_file()");
-}
-END_TEST
-
 START_TEST(configurator_default_buxton_socket)
 {
 	default_test(buxton_socket(), (char*)_BUXTON_SOCKET, "buxton_socket()");
@@ -105,13 +99,6 @@ START_TEST(configurator_env_db_path)
 {
 	putenv("BUXTON_DB_PATH=/nonexistant/buxton.db");
 	default_test(buxton_db_path(), "/nonexistant/buxton.db", "buxton_db_path()");
-}
-END_TEST
-
-START_TEST(configurator_env_smack_load_file)
-{
-	putenv("BUXTON_SMACK_LOAD_FILE=/nonexistant/smack_load_file");
-	default_test(buxton_smack_load_file(), "/nonexistant/smack_load_file", "buxton_smack_load_file()");
 }
 END_TEST
 
@@ -153,16 +140,6 @@ START_TEST(configurator_cmd_db_path)
 }
 END_TEST
 
-START_TEST(configurator_cmd_smack_load_file)
-{
-	char *correct = "herpyderpy";
-
-	buxton_add_cmd_line(CONFIG_SMACK_LOAD_FILE, correct);
-	putenv("BUXTON_SMACK_LOAD_FILE=/nonexistant/smack_load_file");
-	default_test(buxton_smack_load_file(), correct, "buxton_smack_load_file()");
-}
-END_TEST
-
 START_TEST(configurator_cmd_buxton_socket)
 {
 	char *correct = "herpyderpy";
@@ -180,15 +157,6 @@ START_TEST(configurator_conf_db_path)
 
 	putenv("BUXTON_CONF_FILE=" ABS_TOP_SRCDIR "/test/test-configurator.conf");
 	default_test(buxton_db_path(), correct, "buxton_db_path()");
-}
-END_TEST
-
-START_TEST(configurator_conf_smack_load_file)
-{
-	char *correct = "/smack/smack/smack";
-
-	putenv("BUXTON_CONF_FILE=" ABS_TOP_SRCDIR "/test/test-configurator.conf");
-	default_test(buxton_smack_load_file(), correct, "smack_load_file()");
 }
 END_TEST
 
@@ -279,7 +247,6 @@ configurator_suite(void)
 	tcase_add_test(tc, configurator_default_conf_file);
 	tcase_add_test(tc, configurator_default_module_dir);
 	tcase_add_test(tc, configurator_default_db_path);
-	tcase_add_test(tc, configurator_default_smack_load_file);
 	tcase_add_test(tc, configurator_default_buxton_socket);
 	suite_add_tcase(s, tc);
 
@@ -287,7 +254,6 @@ configurator_suite(void)
 	tcase_add_test(tc, configurator_env_conf_file);
 	tcase_add_test(tc, configurator_env_module_dir);
 	tcase_add_test(tc, configurator_env_db_path);
-	tcase_add_test(tc, configurator_env_smack_load_file);
 	tcase_add_test(tc, configurator_env_buxton_socket);
 	suite_add_tcase(s, tc);
 
@@ -295,14 +261,12 @@ configurator_suite(void)
 	tcase_add_test(tc, configurator_cmd_conf_file);
 	tcase_add_test(tc, configurator_cmd_module_dir);
 	tcase_add_test(tc, configurator_cmd_db_path);
-	tcase_add_test(tc, configurator_cmd_smack_load_file);
 	tcase_add_test(tc, configurator_cmd_buxton_socket);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("config file works");
 	tcase_add_test(tc, configurator_conf_module_dir);
 	tcase_add_test(tc, configurator_conf_db_path);
-	tcase_add_test(tc, configurator_conf_smack_load_file);
 	tcase_add_test(tc, configurator_conf_buxton_socket);
 	suite_add_tcase(s, tc);
 

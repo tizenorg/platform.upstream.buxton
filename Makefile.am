@@ -19,8 +19,7 @@ AM_CPPFLAGS = \
 	-D_MODULE_DIRECTORY=\"$(MODULEDIR)\" \
 	-D_DEFAULT_CONFIGURATION_FILE=\"$(CONFPATH)\" \
 	-D_DB_PATH=\"$(DB_PATH)\" \
-	-D_BUXTON_SOCKET=\"$(BUXTON_SOCKET)\" \
-	-D_SMACK_LOAD_FILE=\"$(SMACK_LOAD_FILE)\"
+	-D_BUXTON_SOCKET=\"$(BUXTON_SOCKET)\"
 
 AM_LDFLAGS = \
 	-rdynamic
@@ -126,7 +125,6 @@ TESTS = \
 	check_buxton_list \
 	check_shared_lib \
 	check_daemon \
-	check_smack \
 	check_configurator \
 	check_buxtonsimple
 
@@ -191,8 +189,6 @@ noinst_LTLIBRARIES += \
 	libbuxtonsimple-shared.la
 
 libbuxton_shared_la_SOURCES = \
-	src/security/smack.c \
-	src/security/smack.h \
 	src/shared/backend.c \
 	src/shared/backend.h \
 	src/shared/buxtonarray.c \
@@ -320,7 +316,6 @@ check_PROGRAMS = \
 	check_shared_lib \
 	check_buxtond \
 	check_daemon \
-	check_smack \
 	check_configurator \
 	check_buxtonsimple
 
@@ -430,23 +425,6 @@ check_daemon_CFLAGS = \
 	-DABS_TOP_SRCDIR=\"$(abs_top_srcdir)\" \
 	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
 check_daemon_LDADD = \
-	@CHECK_LIBS@ \
-	@INIPARSER_LIBS@ \
-	libbuxton.la \
-	libbuxton-shared.la
-
-check_smack_SOURCES = \
-	test/check_utils.c \
-	test/check_utils.h \
-	test/check_smack.c
-check_smack_CFLAGS = \
-	$(AM_CFLAGS) \
-	@CHECK_CFLAGS@ \
-	@INIPARSER_CFLAGS@ \
-	-DMAKE_CHECK \
-	-DABS_TOP_SRCDIR=\"$(abs_top_srcdir)\" \
-	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
-check_smack_LDADD = \
 	@CHECK_LIBS@ \
 	@INIPARSER_LIBS@ \
 	libbuxton.la \

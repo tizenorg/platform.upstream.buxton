@@ -41,7 +41,6 @@
 #include "direct.h"
 #include "list.h"
 #include "log.h"
-#include "smack.h"
 #include "util.h"
 #include "configurator.h"
 #include "buxtonlist.h"
@@ -67,7 +66,6 @@ static void print_usage(char *name)
 int main(int argc, char *argv[])
 {
 	int fd;
-	int smackfd = -1;
 	socklen_t addr_len;
 	struct sockaddr_un remote;
 	int descriptors;
@@ -123,14 +121,6 @@ int main(int argc, char *argv[])
 	if (help) {
 		print_usage(argv[0]);
 		exit(EXIT_SUCCESS);
-	}
-
-	if (!buxton_cache_smack_rules()) {
-		exit(EXIT_FAILURE);
-	}
-	smackfd = buxton_watch_smack_rules();
-	if (smackfd < 0 && errno) {
-		exit(EXIT_FAILURE);
 	}
 
 	self.nfds_alloc = 0;
@@ -231,11 +221,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (smackfd >= 0) {
-		/* add Smack rule fd to pollfds */
-		add_pollfd(&self, smackfd, POLLIN | POLLPRI, false);
-	}
-
 	buxton_log("%s: Started\n", argv[0]);
 
 	/* Enter loop to accept clients */
@@ -271,7 +256,6 @@ int main(int argc, char *argv[])
 
 		for (nfds_t i = 1; i < self.nfds; i++) {
 			client_list_item *cl = NULL;
-			char discard[256];
 
 			if (self.pollfds[i].revents == 0) {
 				continue;
@@ -282,18 +266,6 @@ int main(int argc, char *argv[])
 				buxton_debug("Removing / Closing client for fd %d\n", self.pollfds[i].fd);
 				del_pollfd(&self, i);
 				continue;
-			}
-
-			if (smackfd >= 0) {
-				if (self.pollfds[i].fd == smackfd) {
-					if (!buxton_cache_smack_rules()) {
-						exit(EXIT_FAILURE);
-					}
-					buxton_log("Reloaded Smack access rules\n");
-					/* discard inotify data itself */
-					while (read(smackfd, &discard, 256) == 256);
-					continue;
-				}
 			}
 
 			if (self.accepting[i] == true) {
@@ -348,9 +320,6 @@ int main(int argc, char *argv[])
 			}
 
 			assert(self.accepting[i] == 0);
-			if (smackfd >= 0) {
-				assert(self.pollfds[i].fd != smackfd);
-			}
 
 			/* handle data on any connection */
 			/* TODO: Replace with hash table lookup */

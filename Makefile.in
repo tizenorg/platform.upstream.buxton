@@ -86,8 +86,7 @@ host_triplet = @host@
 TESTS = check_db_clean check_buxton$(EXEEXT) check_buxton_api$(EXEEXT) \
 	check_buxton_array$(EXEEXT) check_buxton_list$(EXEEXT) \
 	check_shared_lib$(EXEEXT) check_daemon$(EXEEXT) \
-	check_smack$(EXEEXT) check_configurator$(EXEEXT) \
-	check_buxtonsimple$(EXEEXT)
+	check_configurator$(EXEEXT) check_buxtonsimple$(EXEEXT)
 sbin_PROGRAMS = buxtond$(EXEEXT)
 bin_PROGRAMS = buxtonctl$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2)
 @USE_LOCAL_INIPARSER_TRUE@am__append_3 = \
@@ -99,8 +98,8 @@ bin_PROGRAMS = buxtonctl$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2)
 check_PROGRAMS = check_buxton$(EXEEXT) check_buxton_api$(EXEEXT) \
 	check_buxton_array$(EXEEXT) check_buxton_list$(EXEEXT) \
 	check_shared_lib$(EXEEXT) check_buxtond$(EXEEXT) \
-	check_daemon$(EXEEXT) check_smack$(EXEEXT) \
-	check_configurator$(EXEEXT) check_buxtonsimple$(EXEEXT)
+	check_daemon$(EXEEXT) check_configurator$(EXEEXT) \
+	check_buxtonsimple$(EXEEXT)
 @BUILD_DEMOS_TRUE@am__append_4 = \
 @BUILD_DEMOS_TRUE@	bxt_timing \
 @BUILD_DEMOS_TRUE@	bxt_hello_get \
@@ -192,29 +191,27 @@ gdbm_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(gdbm_la_LDFLAGS) $(LDFLAGS) -o $@
 libbuxton_shared_la_LIBADD =
-am__libbuxton_shared_la_SOURCES_DIST = src/security/smack.c \
-	src/security/smack.h src/shared/backend.c src/shared/backend.h \
-	src/shared/buxtonarray.c src/shared/buxtonarray.h \
-	src/shared/buxtonclient.h src/shared/buxtondata.h \
-	src/shared/buxtonkey.h src/shared/buxtonlist.c \
-	src/shared/buxtonlist.h src/shared/buxtonresponse.h \
-	src/shared/buxtonstring.h src/shared/configurator.c \
-	src/shared/configurator.h src/shared/direct.c \
-	src/shared/direct.h src/shared/hashmap.c src/shared/hashmap.h \
-	src/shared/list.h src/shared/log.c src/shared/log.h \
-	src/shared/macro.h src/shared/protocol.c src/shared/protocol.h \
-	src/shared/serialize.c src/shared/serialize.h \
-	src/shared/util.c src/shared/util.h src/shared/dictionary.c \
-	src/shared/dictionary.h src/shared/iniparser.c \
-	src/shared/iniparser.h
+am__libbuxton_shared_la_SOURCES_DIST = src/shared/backend.c \
+	src/shared/backend.h src/shared/buxtonarray.c \
+	src/shared/buxtonarray.h src/shared/buxtonclient.h \
+	src/shared/buxtondata.h src/shared/buxtonkey.h \
+	src/shared/buxtonlist.c src/shared/buxtonlist.h \
+	src/shared/buxtonresponse.h src/shared/buxtonstring.h \
+	src/shared/configurator.c src/shared/configurator.h \
+	src/shared/direct.c src/shared/direct.h src/shared/hashmap.c \
+	src/shared/hashmap.h src/shared/list.h src/shared/log.c \
+	src/shared/log.h src/shared/macro.h src/shared/protocol.c \
+	src/shared/protocol.h src/shared/serialize.c \
+	src/shared/serialize.h src/shared/util.c src/shared/util.h \
+	src/shared/dictionary.c src/shared/dictionary.h \
+	src/shared/iniparser.c src/shared/iniparser.h
 @USE_LOCAL_INIPARSER_TRUE@am__objects_1 = src/shared/dictionary.lo \
 @USE_LOCAL_INIPARSER_TRUE@	src/shared/iniparser.lo
-am_libbuxton_shared_la_OBJECTS = src/security/smack.lo \
-	src/shared/backend.lo src/shared/buxtonarray.lo \
-	src/shared/buxtonlist.lo src/shared/configurator.lo \
-	src/shared/direct.lo src/shared/hashmap.lo src/shared/log.lo \
-	src/shared/protocol.lo src/shared/serialize.lo \
-	src/shared/util.lo $(am__objects_1)
+am_libbuxton_shared_la_OBJECTS = src/shared/backend.lo \
+	src/shared/buxtonarray.lo src/shared/buxtonlist.lo \
+	src/shared/configurator.lo src/shared/direct.lo \
+	src/shared/hashmap.lo src/shared/log.lo src/shared/protocol.lo \
+	src/shared/serialize.lo src/shared/util.lo $(am__objects_1)
 libbuxton_shared_la_OBJECTS = $(am_libbuxton_shared_la_OBJECTS)
 libbuxton_shared_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
@@ -447,13 +444,6 @@ check_shared_lib_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(check_shared_lib_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
-am_check_smack_OBJECTS = test/check_smack-check_utils.$(OBJEXT) \
-	test/check_smack-check_smack.$(OBJEXT)
-check_smack_OBJECTS = $(am_check_smack_OBJECTS)
-check_smack_DEPENDENCIES = libbuxton.la libbuxton-shared.la
-check_smack_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(check_smack_CFLAGS) \
-	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -502,7 +492,7 @@ SOURCES = $(gdbm_la_SOURCES) $(libbuxton_shared_la_SOURCES) \
 	$(check_buxton_array_SOURCES) $(check_buxton_list_SOURCES) \
 	$(check_buxtond_SOURCES) $(check_buxtonsimple_SOURCES) \
 	$(check_configurator_SOURCES) $(check_daemon_SOURCES) \
-	$(check_shared_lib_SOURCES) $(check_smack_SOURCES)
+	$(check_shared_lib_SOURCES)
 DIST_SOURCES = $(gdbm_la_SOURCES) \
 	$(am__libbuxton_shared_la_SOURCES_DIST) \
 	$(libbuxton_la_SOURCES) $(libbuxtonsimple_shared_la_SOURCES) \
@@ -522,8 +512,7 @@ DIST_SOURCES = $(gdbm_la_SOURCES) \
 	$(check_buxton_api_SOURCES) $(check_buxton_array_SOURCES) \
 	$(check_buxton_list_SOURCES) $(check_buxtond_SOURCES) \
 	$(check_buxtonsimple_SOURCES) $(check_configurator_SOURCES) \
-	$(check_daemon_SOURCES) $(check_shared_lib_SOURCES) \
-	$(check_smack_SOURCES)
+	$(check_daemon_SOURCES) $(check_shared_lib_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -871,7 +860,6 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
-SMACK_LOAD_FILE = @SMACK_LOAD_FILE@
 STRIP = @STRIP@
 SYSTEMD_CFLAGS = @SYSTEMD_CFLAGS@
 SYSTEMD_LIBS = @SYSTEMD_LIBS@
@@ -945,8 +933,7 @@ AM_CPPFLAGS = \
 	-D_MODULE_DIRECTORY=\"$(MODULEDIR)\" \
 	-D_DEFAULT_CONFIGURATION_FILE=\"$(CONFPATH)\" \
 	-D_DB_PATH=\"$(DB_PATH)\" \
-	-D_BUXTON_SOCKET=\"$(BUXTON_SOCKET)\" \
-	-D_SMACK_LOAD_FILE=\"$(SMACK_LOAD_FILE)\"
+	-D_BUXTON_SOCKET=\"$(BUXTON_SOCKET)\"
 
 AM_LDFLAGS = \
 	-rdynamic
@@ -1066,19 +1053,19 @@ buxtonctl_LDADD = \
 	libbuxton.la \
 	libbuxton-shared.la
 
-libbuxton_shared_la_SOURCES = src/security/smack.c \
-	src/security/smack.h src/shared/backend.c src/shared/backend.h \
-	src/shared/buxtonarray.c src/shared/buxtonarray.h \
-	src/shared/buxtonclient.h src/shared/buxtondata.h \
-	src/shared/buxtonkey.h src/shared/buxtonlist.c \
-	src/shared/buxtonlist.h src/shared/buxtonresponse.h \
-	src/shared/buxtonstring.h src/shared/configurator.c \
-	src/shared/configurator.h src/shared/direct.c \
-	src/shared/direct.h src/shared/hashmap.c src/shared/hashmap.h \
-	src/shared/list.h src/shared/log.c src/shared/log.h \
-	src/shared/macro.h src/shared/protocol.c src/shared/protocol.h \
-	src/shared/serialize.c src/shared/serialize.h \
-	src/shared/util.c src/shared/util.h ${NULL} $(am__append_3)
+libbuxton_shared_la_SOURCES = src/shared/backend.c \
+	src/shared/backend.h src/shared/buxtonarray.c \
+	src/shared/buxtonarray.h src/shared/buxtonclient.h \
+	src/shared/buxtondata.h src/shared/buxtonkey.h \
+	src/shared/buxtonlist.c src/shared/buxtonlist.h \
+	src/shared/buxtonresponse.h src/shared/buxtonstring.h \
+	src/shared/configurator.c src/shared/configurator.h \
+	src/shared/direct.c src/shared/direct.h src/shared/hashmap.c \
+	src/shared/hashmap.h src/shared/list.h src/shared/log.c \
+	src/shared/log.h src/shared/macro.h src/shared/protocol.c \
+	src/shared/protocol.h src/shared/serialize.c \
+	src/shared/serialize.h src/shared/util.c src/shared/util.h \
+	${NULL} $(am__append_3)
 libbuxton_shared_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
 	-static
@@ -1267,25 +1254,6 @@ check_daemon_CFLAGS = \
 	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
 
 check_daemon_LDADD = \
-	@CHECK_LIBS@ \
-	@INIPARSER_LIBS@ \
-	libbuxton.la \
-	libbuxton-shared.la
-
-check_smack_SOURCES = \
-	test/check_utils.c \
-	test/check_utils.h \
-	test/check_smack.c
-
-check_smack_CFLAGS = \
-	$(AM_CFLAGS) \
-	@CHECK_CFLAGS@ \
-	@INIPARSER_CFLAGS@ \
-	-DMAKE_CHECK \
-	-DABS_TOP_SRCDIR=\"$(abs_top_srcdir)\" \
-	-DABS_TOP_BUILDDIR=\"$(abs_top_builddir)\"
-
-check_smack_LDADD = \
 	@CHECK_LIBS@ \
 	@INIPARSER_LIBS@ \
 	libbuxton.la \
@@ -1600,14 +1568,6 @@ src/db/gdbm.lo: src/db/$(am__dirstamp) \
 
 gdbm.la: $(gdbm_la_OBJECTS) $(gdbm_la_DEPENDENCIES) $(EXTRA_gdbm_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(gdbm_la_LINK) -rpath $(pkglibdir) $(gdbm_la_OBJECTS) $(gdbm_la_LIBADD) $(LIBS)
-src/security/$(am__dirstamp):
-	@$(MKDIR_P) src/security
-	@: > src/security/$(am__dirstamp)
-src/security/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) src/security/$(DEPDIR)
-	@: > src/security/$(DEPDIR)/$(am__dirstamp)
-src/security/smack.lo: src/security/$(am__dirstamp) \
-	src/security/$(DEPDIR)/$(am__dirstamp)
 src/shared/$(am__dirstamp):
 	@$(MKDIR_P) src/shared
 	@: > src/shared/$(am__dirstamp)
@@ -1964,14 +1924,6 @@ test/check_shared_lib-check_shared_lib.$(OBJEXT):  \
 check_shared_lib$(EXEEXT): $(check_shared_lib_OBJECTS) $(check_shared_lib_DEPENDENCIES) $(EXTRA_check_shared_lib_DEPENDENCIES) 
 	@rm -f check_shared_lib$(EXEEXT)
 	$(AM_V_CCLD)$(check_shared_lib_LINK) $(check_shared_lib_OBJECTS) $(check_shared_lib_LDADD) $(LIBS)
-test/check_smack-check_utils.$(OBJEXT): test/$(am__dirstamp) \
-	test/$(DEPDIR)/$(am__dirstamp)
-test/check_smack-check_smack.$(OBJEXT): test/$(am__dirstamp) \
-	test/$(DEPDIR)/$(am__dirstamp)
-
-check_smack$(EXEEXT): $(check_smack_OBJECTS) $(check_smack_DEPENDENCIES) $(EXTRA_check_smack_DEPENDENCIES) 
-	@rm -f check_smack$(EXEEXT)
-	$(AM_V_CCLD)$(check_smack_LINK) $(check_smack_OBJECTS) $(check_smack_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -1984,8 +1936,6 @@ mostlyclean-compile:
 	-rm -f src/libbuxton/*.lo
 	-rm -f src/libbuxtonsimple/*.$(OBJEXT)
 	-rm -f src/libbuxtonsimple/*.lo
-	-rm -f src/security/*.$(OBJEXT)
-	-rm -f src/security/*.lo
 	-rm -f src/shared/*.$(OBJEXT)
 	-rm -f src/shared/*.lo
 	-rm -f test/*.$(OBJEXT)
@@ -2016,7 +1966,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/db/$(DEPDIR)/memory.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/libbuxton/$(DEPDIR)/libbuxton_la-lbuxton.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/libbuxtonsimple/$(DEPDIR)/libbuxtonsimple_la-lbuxtonsimple.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/security/$(DEPDIR)/smack.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/backend.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/buxtonarray.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/shared/$(DEPDIR)/buxtonlist.Plo@am__quote@
@@ -2046,8 +1995,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_daemon-check_utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_shared_lib-check_shared_lib.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_shared_lib-check_utils.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_smack-check_smack.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/check_smack-check_utils.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -2563,34 +2510,6 @@ test/check_shared_lib-check_shared_lib.obj: test/check_shared_lib.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_shared_lib_CFLAGS) $(CFLAGS) -c -o test/check_shared_lib-check_shared_lib.obj `if test -f 'test/check_shared_lib.c'; then $(CYGPATH_W) 'test/check_shared_lib.c'; else $(CYGPATH_W) '$(srcdir)/test/check_shared_lib.c'; fi`
 
-test/check_smack-check_utils.o: test/check_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -MT test/check_smack-check_utils.o -MD -MP -MF test/$(DEPDIR)/check_smack-check_utils.Tpo -c -o test/check_smack-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_smack-check_utils.Tpo test/$(DEPDIR)/check_smack-check_utils.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_smack-check_utils.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -c -o test/check_smack-check_utils.o `test -f 'test/check_utils.c' || echo '$(srcdir)/'`test/check_utils.c
-
-test/check_smack-check_utils.obj: test/check_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -MT test/check_smack-check_utils.obj -MD -MP -MF test/$(DEPDIR)/check_smack-check_utils.Tpo -c -o test/check_smack-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_smack-check_utils.Tpo test/$(DEPDIR)/check_smack-check_utils.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_utils.c' object='test/check_smack-check_utils.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -c -o test/check_smack-check_utils.obj `if test -f 'test/check_utils.c'; then $(CYGPATH_W) 'test/check_utils.c'; else $(CYGPATH_W) '$(srcdir)/test/check_utils.c'; fi`
-
-test/check_smack-check_smack.o: test/check_smack.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -MT test/check_smack-check_smack.o -MD -MP -MF test/$(DEPDIR)/check_smack-check_smack.Tpo -c -o test/check_smack-check_smack.o `test -f 'test/check_smack.c' || echo '$(srcdir)/'`test/check_smack.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_smack-check_smack.Tpo test/$(DEPDIR)/check_smack-check_smack.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_smack.c' object='test/check_smack-check_smack.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -c -o test/check_smack-check_smack.o `test -f 'test/check_smack.c' || echo '$(srcdir)/'`test/check_smack.c
-
-test/check_smack-check_smack.obj: test/check_smack.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -MT test/check_smack-check_smack.obj -MD -MP -MF test/$(DEPDIR)/check_smack-check_smack.Tpo -c -o test/check_smack-check_smack.obj `if test -f 'test/check_smack.c'; then $(CYGPATH_W) 'test/check_smack.c'; else $(CYGPATH_W) '$(srcdir)/test/check_smack.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/check_smack-check_smack.Tpo test/$(DEPDIR)/check_smack-check_smack.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/check_smack.c' object='test/check_smack-check_smack.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(check_smack_CFLAGS) $(CFLAGS) -c -o test/check_smack-check_smack.obj `if test -f 'test/check_smack.c'; then $(CYGPATH_W) 'test/check_smack.c'; else $(CYGPATH_W) '$(srcdir)/test/check_smack.c'; fi`
-
 mostlyclean-libtool:
 	-rm -f *.lo
 
@@ -2599,7 +2518,6 @@ clean-libtool:
 	-rm -rf src/db/.libs src/db/_libs
 	-rm -rf src/libbuxton/.libs src/libbuxton/_libs
 	-rm -rf src/libbuxtonsimple/.libs src/libbuxtonsimple/_libs
-	-rm -rf src/security/.libs src/security/_libs
 	-rm -rf src/shared/.libs src/shared/_libs
 
 distclean-libtool:
@@ -3200,13 +3118,6 @@ check_daemon.log: check_daemon$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-check_smack.log: check_smack$(EXEEXT)
-	@p='check_smack$(EXEEXT)'; \
-	b='check_smack'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 check_configurator.log: check_configurator$(EXEEXT)
 	@p='check_configurator$(EXEEXT)'; \
 	b='check_configurator'; \
@@ -3477,8 +3388,6 @@ distclean-generic:
 	-rm -f src/libbuxton/$(am__dirstamp)
 	-rm -f src/libbuxtonsimple/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/libbuxtonsimple/$(am__dirstamp)
-	-rm -f src/security/$(DEPDIR)/$(am__dirstamp)
-	-rm -f src/security/$(am__dirstamp)
 	-rm -f src/shared/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/shared/$(am__dirstamp)
 	-rm -f test/$(DEPDIR)/$(am__dirstamp)
@@ -3495,7 +3404,7 @@ clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
 
 distclean: distclean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/libbuxtonsimple/$(DEPDIR) src/security/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/libbuxtonsimple/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-local distclean-tags
@@ -3548,7 +3457,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/libbuxtonsimple/$(DEPDIR) src/security/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf demo/$(DEPDIR) src/cli/$(DEPDIR) src/core/$(DEPDIR) src/db/$(DEPDIR) src/libbuxton/$(DEPDIR) src/libbuxtonsimple/$(DEPDIR) src/shared/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

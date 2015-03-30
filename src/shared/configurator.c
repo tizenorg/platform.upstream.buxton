@@ -61,7 +61,6 @@ static const char *KS[CONFIG_MAX] = {
 	"BUXTON_CONF_FILE",
 	"BUXTON_MODULE_DIR",
 	"BUXTON_DB_PATH",
-	"BUXTON_SMACK_LOAD_FILE",
 	"BUXTON_BUXTON_SOCKET"
 };
 
@@ -74,7 +73,6 @@ static const char *config_keys[CONFIG_MAX] = {
 	NULL,			/**< conf file entry in config file is meaningless */
 	"ModuleDirectory",
 	"DatabasePath",
-	"SmackLoadFile",
 	"SocketPath"
 };
 
@@ -83,7 +81,6 @@ static const char *COMPILE_DEFAULT[CONFIG_MAX] = {
 	_DEFAULT_CONFIGURATION_FILE,
 	_MODULE_DIRECTORY,
 	_DB_PATH,
-	_SMACK_LOAD_FILE,
 	_BUXTON_SOCKET
 };
 
@@ -268,12 +265,6 @@ const char* buxton_db_path(void)
 {
 	initialize();
 	return (const char*)conf.keys[CONFIG_DB_PATH];
-}
-
-const char* buxton_smack_load_file(void)
-{
-	initialize();
-	return (const char*)conf.keys[CONFIG_SMACK_LOAD_FILE];
 }
 
 const char* buxton_socket(void)
