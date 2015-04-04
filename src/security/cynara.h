@@ -11,6 +11,11 @@
 
 #pragma once
 
+#include <stdint.h>
+
+#include "buxton.h"
+#include "buxtonkey.h"
+#include "buxtondata.h"
 #include "daemon.h"
 
 /**
@@ -35,6 +40,21 @@ bool buxton_cynara_check_fd(int fd);
  * Process events on Cynara client
  */
 void buxton_cynara_process(void);
+
+/**
+ * Check permissions
+ * @param self buxtond instance being run
+ * @param client Used to validate privilege
+ * @param msgid client's message ID
+ * @param msg buxton control message type
+ * @param key buxton key
+ * @param value buxton value
+ * @param permitted a boolean value indicates whether it is allowed or denied
+ * @return true when permitted is set
+ */
+bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
+		uint32_t msgid, BuxtonControlMessage msg, _BuxtonKey *key,
+		BuxtonData *value, bool *permitted);
 
 /*
  * Editor modelines  -	http://www.wireshark.org/tools/modelines.html

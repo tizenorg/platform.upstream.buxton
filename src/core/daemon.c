@@ -25,6 +25,7 @@
 #include "log.h"
 #include "util.h"
 #include "buxtonlist.h"
+#include "cynara.h"
 
 static char *notify_key_name(_BuxtonKey *key)
 {
@@ -233,6 +234,7 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	bool ret = false;
 	uint32_t msgid = 0;
 	uint32_t n_msgid = 0;
+	bool permitted;
 
 	assert(self);
 	assert(client);
@@ -256,6 +258,33 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 
 	if (!parse_list(msg, (size_t)p_count, list, &key, &value)) {
 		goto end;
+	}
+
+	/* check permissions */
+	switch (msg) {
+	case BUXTON_CONTROL_SET:
+	case BUXTON_CONTROL_UNSET:
+	case BUXTON_CONTROL_REMOVE_GROUP:
+	case BUXTON_CONTROL_GET:
+	case BUXTON_CONTROL_GET_PRIV:
+	case BUXTON_CONTROL_NOTIFY:
+		ret = buxton_cynara_check(self, client, msgid, msg,
+				&key, value, &permitted);
+		if (!ret) { /* wait for cynara response */
+			buxton_debug("wait for cynara response\n");
+			ret = true;
+			goto end;
+		}
+
+		/* get cached answer */
+		if (!permitted) { /* denied */
+			buxton_debug("permission denied\n");
+			response = -1;
+			goto send_response;
+		}
+		break;
+	default:
+		break;
 	}
 
 	/* use internal function from buxtond */
@@ -297,6 +326,8 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	default:
 		goto end;
 	}
+
+send_response:
 	/* Set a response code */
 	response_data.type = BUXTON_TYPE_INT32;
 	response_data.store.d_int32 = response;
@@ -499,6 +530,104 @@ end:
 		free(list);
 	}
 	return ret;
+}
+
+void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
+		uint32_t msgid, BuxtonControlMessage msg, _BuxtonKey *key,
+		BuxtonData *value)
+{
+	int32_t response;
+	_cleanup_buxton_data_ BuxtonData *data = NULL;
+	size_t response_len;
+	BuxtonData response_data;
+	uid_t uid;
+	BuxtonArray *out_list = NULL;
+	_cleanup_free_ uint8_t *response_store = NULL;
+	bool ret;
+
+	buxton_debug("client %p msgid %d type %d\n", client, msgid, msg);
+
+	uid = self->buxton.client.uid;
+
+	switch (msg) {
+	case BUXTON_CONTROL_SET:
+		set_value(self, client, key, value, &response);
+		break;
+	case BUXTON_CONTROL_UNSET:
+		unset_value(self, client, key, &response);
+		break;
+	case BUXTON_CONTROL_REMOVE_GROUP:
+		remove_group(self, client, key, &response);
+		break;
+	case BUXTON_CONTROL_GET:
+		data = get_value(self, client, key, &response);
+		break;
+	case BUXTON_CONTROL_GET_PRIV:
+		data = get_priv(self, client, key, &response);
+		break;
+	case BUXTON_CONTROL_NOTIFY:
+		register_notification(self, client, key, msgid, &response);
+		break;
+	case BUXTON_CONTROL_SET_PRIV:
+	case BUXTON_CONTROL_CREATE_GROUP:
+	case BUXTON_CONTROL_LIST:
+	case BUXTON_CONTROL_LIST_NAMES:
+	case BUXTON_CONTROL_UNNOTIFY:
+	default:
+		goto end;
+	}
+
+	/* Set a response code */
+	response_data.type = BUXTON_TYPE_INT32;
+	response_data.store.d_int32 = response;
+	out_list = buxton_array_new();
+	if (!out_list) {
+		abort();
+	}
+	if (!buxton_array_add(out_list, &response_data)) {
+		abort();
+	}
+
+	switch (msg) {
+	case BUXTON_CONTROL_GET:
+	case BUXTON_CONTROL_GET_PRIV:
+		if (data && !buxton_array_add(out_list, data)) {
+			abort();
+		}
+	case BUXTON_CONTROL_SET:
+	case BUXTON_CONTROL_REMOVE_GROUP:
+	case BUXTON_CONTROL_UNSET:
+	case BUXTON_CONTROL_NOTIFY:
+		response_len = buxton_serialize_message(&response_store,
+							BUXTON_CONTROL_STATUS,
+							msgid, out_list);
+		if (response_len == 0) {
+			if (errno == ENOMEM) {
+				abort();
+			}
+			buxton_log("Failed to serialize response message: type %d\n", msg);
+			abort();
+		}
+		break;
+	default:
+		goto end;
+	}
+
+	/* Now write the response */
+	ret = _write(client->fd, response_store, response_len);
+	if (ret) {
+		if (msg == BUXTON_CONTROL_SET && response == 0) {
+			buxtond_notify_clients(self, client, key, value);
+		} else if (msg == BUXTON_CONTROL_UNSET && response == 0) {
+			buxtond_notify_clients(self, client, key, NULL);
+		}
+	}
+
+end:
+	/* Restore our own UID */
+	self->buxton.client.uid = uid;
+	if (out_list)
+		buxton_array_free(&out_list, NULL);
 }
 
 void buxtond_notify_clients(BuxtonDaemon *self, client_list_item *client,

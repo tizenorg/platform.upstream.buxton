@@ -94,6 +94,19 @@ bool buxtond_handle_message(BuxtonDaemon *self,
 	__attribute__((warn_unused_result));
 
 /**
+ * Handle a queued message within buxtond
+ * @param self Reference to BuxtonDaemon
+ * @param client Current client
+ * @param msgid Client's message ID
+ * @param msg Message's type
+ * @param key buxton key
+ * @param value key's value
+ */
+void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
+		uint32_t msgid, BuxtonControlMessage msg, _BuxtonKey *key,
+		BuxtonData *value);
+
+/**
  * Notify clients a value changes in buxtond
  * @param self Refernece to BuxtonDaemon
  * @param client Current client
