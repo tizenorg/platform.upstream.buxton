@@ -253,6 +253,14 @@ void add_pollfd(BuxtonDaemon *self, int fd, short events, bool a);
 void del_pollfd(BuxtonDaemon *self, nfds_t i);
 
 /**
+ * Find an index of fd in daemon's poll list
+ * @param self buxtond instance being run
+ * @param fd File descriptor to find its index
+ * @return an index of fd or -1 when fd does not exist in list
+ */
+int find_pollfd(BuxtonDaemon *self, int fd);
+
+/**
  * Setup a client's smack label
  * @param cl Client to set smack label on
  * @return None

@@ -73,6 +73,7 @@ AH_BOTTOM([#endif])
 # PkgConfig tests
 PKG_CHECK_MODULES([CHECK], [check])
 PKG_CHECK_MODULES([SYSTEMD], [libsystemd-daemon])
+PKG_CHECK_MODULES([CYNARA], [cynara-client-async])
 
 # Checks for header files.
 AC_FUNC_ALLOCA

@@ -163,13 +163,17 @@ bin_PROGRAMS = \
 buxtond_SOURCES = \
 	src/core/daemon.c \
 	src/core/daemon.h \
+	src/security/cynara.c \
+	src/security/cynara.h \
 	src/core/main.c
 
 buxtond_LDADD = \
 	$(SYSTEMD_LIBS) \
+	$(CYNARA_LIBS) \
 	libbuxton-shared.la
 
 buxtond_CFLAGS = \
+	$(CYNARA_CFLAGS) \
 	$(AM_CFLAGS)
 
 buxtonctl_SOURCES = \

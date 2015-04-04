@@ -1177,6 +1177,20 @@ void del_pollfd(BuxtonDaemon *self, nfds_t i)
 	self->nfds--;
 }
 
+int find_pollfd(BuxtonDaemon *self, int fd)
+{
+	int i;
+
+	assert(self);
+	assert(fd >= 0);
+
+	for (i = 0; i < self->nfds; i++)
+		if (self->pollfds[i].fd == fd)
+			return i;
+
+	return -1;
+}
+
 void handle_smack_label(client_list_item *cl)
 {
 	socklen_t slabel_len = 1;

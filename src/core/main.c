@@ -44,6 +44,7 @@
 #include "util.h"
 #include "configurator.h"
 #include "buxtonlist.h"
+#include "cynara.h"
 
 #define SOCKET_TIMEOUT 5
 
@@ -157,6 +158,12 @@ int main(int argc, char *argv[])
 	}
 
 	add_pollfd(&self, sigfd, POLLIN, false);
+
+	/* Initialize Cynara */
+	ret = buxton_cynara_initialize(&self);
+	if (ret == -1) {
+		exit(EXIT_FAILURE);
+	}
 
 	/* For client notifications */
 	self.notify_mapping = hashmap_new(string_hash_func, string_compare_func);
@@ -321,6 +328,11 @@ int main(int argc, char *argv[])
 
 			assert(self.accepting[i] == 0);
 
+			if (buxton_cynara_check_fd(self.pollfds[i].fd)) {
+				buxton_cynara_process();
+				continue;
+			}
+
 			/* handle data on any connection */
 			/* TODO: Replace with hash table lookup */
 			LIST_FOREACH(item, cl, self.client_list)
@@ -336,6 +348,8 @@ int main(int argc, char *argv[])
 	}
 
 	buxton_log("%s: Closing all connections\n", argv[0]);
+
+	buxton_cynara_finish();
 
 	if (manual_start) {
 		unlink(buxton_socket());
