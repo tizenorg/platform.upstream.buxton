@@ -392,6 +392,9 @@ static void handle_request(struct BuxtonRequest *req)
 	if (req->group_perm == BUXTON_CYNARA_DENIED ||
 			req->key_perm == BUXTON_CYNARA_DENIED) {
 		send_error_reply(req->daemon, req->client, req->msgid);
+		buxton_log("%s access denied\n",
+				req->group_perm == BUXTON_CYNARA_DENIED ?
+				"Group" : "Key");
 	} else { /* both allowed */
 		buxtond_handle_queued_message(req->daemon, req->client,
 				req->msgid, req->type,
@@ -558,6 +561,7 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 	gres = buxton_cynara_check_cache(client->smack_label->value,
 			user, gpriv);
 	if (gres == BUXTON_CYNARA_DENIED) {
+		buxton_log("Group access '%s' denied\n", gpriv);
 		*permitted = false;
 		return true;
 	}
@@ -567,6 +571,7 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 	kres = buxton_cynara_check_cache(client->smack_label->value,
 			user, kpriv);
 	if (kres == BUXTON_CYNARA_DENIED) {
+		buxton_log("Key access '%s' denied\n", kpriv);
 		*permitted = false;
 		return true;
 	}
