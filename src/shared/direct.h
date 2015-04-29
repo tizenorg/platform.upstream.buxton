@@ -65,7 +65,7 @@ bool buxton_direct_set_privilege(BuxtonControl *control,
  * Create a group within Buxton
  * @param control An initialized control structure
  * @param key The key struct with group and layer members initialized
- * @param privilege The privilege string
+ * @param privilege The privilege string (no longer used from ver. 6)
  * @return A boolean value, indicating success of the operation
  */
 bool buxton_direct_create_group(BuxtonControl *control,

@@ -45,8 +45,6 @@ struct BuxtonRequest {
 	BuxtonControlMessage type;
 	_BuxtonKey *key;
 	BuxtonData *value;
-	int group_perm;
-	cynara_check_id group_id;
 	int key_perm;
 	cynara_check_id key_id;
 };
@@ -115,12 +113,8 @@ static char *buxton_cynara_get_priv_str(BuxtonControlMessage msg,
 		priv = priv_read;
 		break;
 	default:
-		priv = NULL;
-		break;
-	}
-
-	if (!priv || !priv->value)
 		return NULL;
+	}
 
 	str = malloc0(priv->length);
 	if (!str)
@@ -162,7 +156,7 @@ static char *buxton_cynara_get_priv(BuxtonControl *control,
 	}
 
 	str = buxton_cynara_get_priv_str(msg, priv_read, priv_write);
-	buxton_debug("privilege string: '%s'\n", str);
+	buxton_debug("privilege string: '%s'\n", str ? str : "");
 
 	string_free(priv_read);
 	string_free(priv_write);
@@ -232,9 +226,6 @@ static void release_request(struct BuxtonRequest *req)
 	buxton_debug("BuxtonRequest %p released\n", req);
 
 	if (cynara) {
-		if (req->group_perm == BUXTON_CYNARA_WAITING)
-			cynara_async_cancel_request(cynara, req->group_id);
-
 		if (req->key_perm == BUXTON_CYNARA_WAITING)
 			cynara_async_cancel_request(cynara, req->key_id);
 	}
@@ -286,7 +277,6 @@ static struct BuxtonRequest *create_request(BuxtonDaemon *self,
 	req->client = client;
 	req->msgid = msgid;
 	req->type = msg;
-	req->group_perm = BUXTON_CYNARA_UNKNOWN;
 	req->key_perm = BUXTON_CYNARA_UNKNOWN;
 
 	return req;
@@ -383,18 +373,11 @@ static void handle_request(struct BuxtonRequest *req)
 {
 	assert(req);
 
-	if (req->group_perm == BUXTON_CYNARA_WAITING
-			|| req->key_perm == BUXTON_CYNARA_WAITING)
-		return;
-
 	hashmap_remove(requests, req);
-	if (req->group_perm == BUXTON_CYNARA_DENIED ||
-			req->key_perm == BUXTON_CYNARA_DENIED) {
+	if (req->key_perm == BUXTON_CYNARA_DENIED) {
 		send_error_reply(req->daemon, req->client, req->msgid);
-		buxton_log("%s access denied\n",
-				req->group_perm == BUXTON_CYNARA_DENIED ?
-				"Group" : "Key");
-	} else { /* both allowed */
+		buxton_log("Key access denied\n");
+	} else { /* allowed */
 		buxtond_handle_queued_message(req->daemon, req->client,
 				req->msgid, req->type,
 				req->key, req->value);
@@ -402,39 +385,7 @@ static void handle_request(struct BuxtonRequest *req)
 	release_request(req);
 }
 
-static void buxton_cynara_group_response(cynara_check_id id,
-		cynara_async_call_cause cause, int resp, void *data)
-{
-	struct BuxtonRequest *req = data;
-	bool r;
-
-	assert(req);
-
-	buxton_debug("check id %u, cause %d, resp %d\n", id, cause, resp);
-
-	r = mark_answered(req, &req->group_perm);
-	if (!r)
-		return;
-
-	switch (cause) {
-	case CYNARA_CALL_CAUSE_ANSWER:
-		req->group_perm = get_answer(resp);
-		buxton_debug("group %u:%d\n", req->group_id, req->group_perm);
-		handle_request(req);
-		break;
-	case CYNARA_CALL_CAUSE_CANCEL:
-	case CYNARA_CALL_CAUSE_FINISH:
-	case CYNARA_CALL_CAUSE_SERVICE_NOT_AVAILABLE:
-	default:
-		buxton_log("Cynara response is not an answer\n");
-		send_error_reply(req->daemon, req->client, req->msgid);
-		hashmap_remove(requests, req);
-		release_request(req);
-		break;
-	}
-}
-
-static void buxton_cynara_key_response(cynara_check_id id,
+static void buxton_cynara_response(cynara_check_id id,
 		cynara_async_call_cause cause, int resp, void *data)
 {
 	struct BuxtonRequest *req = data;
@@ -468,8 +419,7 @@ static void buxton_cynara_key_response(cynara_check_id id,
 
 static int buxton_cynara_request(BuxtonDaemon *self, client_list_item *client,
 		uint32_t msgid, BuxtonControlMessage msg, _BuxtonKey *key,
-		BuxtonData *value, const char *user,
-		const char *gpriv, const char *kpriv)
+		BuxtonData *value, const char *user, const char *priv)
 {
 	int ret;
 	struct BuxtonRequest *req;
@@ -479,7 +429,7 @@ static int buxton_cynara_request(BuxtonDaemon *self, client_list_item *client,
 	assert(client);
 	assert(key);
 	assert(user);
-	assert(gpriv || kpriv);
+	assert(priv);
 
 	req = create_request(self, client, msgid, msg, key, value);
 	if (!req) {
@@ -487,37 +437,16 @@ static int buxton_cynara_request(BuxtonDaemon *self, client_list_item *client,
 		return -1;
 	}
 
-	if (gpriv) {
-		ret = cynara_async_create_request(cynara,
-				client->smack_label->value, "", user, gpriv,
-				&id, buxton_cynara_group_response, req);
-		if (ret != CYNARA_API_SUCCESS) {
-			buxton_log("Cynara async request failed: %d\n", ret);
-			release_request(req);
-			return -1;
-		}
-		req->group_perm = BUXTON_CYNARA_WAITING;
-		req->group_id = id;
-	} else {
-		/* If privilege string is NULL, we don't need to check */
-		req->group_perm = BUXTON_CYNARA_ALLOWED;
+	ret = cynara_async_create_request(cynara,
+			client->smack_label->value, "", user, priv,
+			&id, buxton_cynara_response, req);
+	if (ret != CYNARA_API_SUCCESS) {
+		buxton_log("Cynara async request failed: %d\n", ret);
+		release_request(req);
+		return -1;
 	}
-
-	if (kpriv) {
-		ret = cynara_async_create_request(cynara,
-				client->smack_label->value, "", user, kpriv,
-				&id, buxton_cynara_key_response, req);
-		if (ret != CYNARA_API_SUCCESS) {
-			buxton_log("Cynara async request failed: %d\n", ret);
-			release_request(req);
-			return -1;
-		}
-		req->key_perm = BUXTON_CYNARA_WAITING;
-		req->key_id = id;
-	} else {
-		/* If privilege string is NULL, we don't need to check */
-		req->key_perm = BUXTON_CYNARA_ALLOWED;
-	}
+	req->key_perm = BUXTON_CYNARA_WAITING;
+	req->key_id = id;
 
 	hashmap_put(requests, req, req);
 
@@ -528,11 +457,8 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 		uint32_t msgid, BuxtonControlMessage msg, _BuxtonKey *key,
 		BuxtonData *value, bool *permitted)
 {
-	_cleanup_free_ char *gpriv = NULL;
-	_cleanup_free_ char *kpriv = NULL;
-	_cleanup_buxton_key_ _BuxtonKey *group = NULL;
-	int gres;
-	int kres;
+	_cleanup_free_ char *priv = NULL;
+	int res;
 	_cleanup_free_ char *user = NULL;
 	int ret;
 
@@ -548,41 +474,24 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 		return true;
 	}
 
-	/* check group privilege */
-	group = malloc0(sizeof(_BuxtonKey));
-	if (!group)
-		abort();
-
-	if (!buxton_copy_key_group(key, group))
-		abort();
-
-	gpriv = buxton_cynara_get_priv(&self->buxton, group, msg);
-	gres = buxton_cynara_check_cache(client->smack_label->value,
-			user, gpriv);
-	if (gres == BUXTON_CYNARA_DENIED) {
-		buxton_log("Group access '%s' denied\n", gpriv);
-		*permitted = false;
-		return true;
-	}
-
 	/* check key privilege */
-	kpriv = buxton_cynara_get_priv(&self->buxton, key, msg);
-	kres = buxton_cynara_check_cache(client->smack_label->value,
-			user, kpriv);
-	if (kres == BUXTON_CYNARA_DENIED) {
-		buxton_log("Key access '%s' denied\n", kpriv);
-		*permitted = false;
-		return true;
-	}
-
-	if (gres == BUXTON_CYNARA_ALLOWED && kres == BUXTON_CYNARA_ALLOWED) {
+	priv = buxton_cynara_get_priv(&self->buxton, key, msg);
+	if (!priv || !*priv) {
+		/* If privilege is not set */
 		*permitted = true;
 		return true;
 	}
 
+	res = buxton_cynara_check_cache(client->smack_label->value, user, priv);
+	if (res != BUXTON_CYNARA_UNKNOWN) {
+		*permitted = (res == BUXTON_CYNARA_ALLOWED);
+		if (!*permitted)
+			buxton_log("Key access '%s' denied\n", priv);
+		return true;
+	}
+
 	ret = buxton_cynara_request(self, client, msgid, msg, key, value, user,
-			gres == BUXTON_CYNARA_UNKNOWN ? gpriv : NULL,
-			kres == BUXTON_CYNARA_UNKNOWN ? kpriv : NULL);
+			priv);
 	if (ret) {
 		*permitted = false;
 		return true;

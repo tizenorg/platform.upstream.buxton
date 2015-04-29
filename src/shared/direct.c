@@ -331,12 +331,12 @@ bool buxton_direct_create_group(BuxtonControl *control,
 	BuxtonBackend *backend;
 	BuxtonLayer *layer;
 	BuxtonConfig *config;
-	BuxtonString s, l;
+	BuxtonString s;
 	_cleanup_buxton_data_ BuxtonData *data = NULL;
 	_cleanup_buxton_data_ BuxtonData *group = NULL;
-	_cleanup_buxton_string_ BuxtonString *dpriv = NULL;
 	_cleanup_buxton_string_ BuxtonString *gpriv_read = NULL;
 	_cleanup_buxton_string_ BuxtonString *gpriv_write = NULL;
+	BuxtonString def_priv = buxton_string_pack("");
 	bool r = false;
 	int ret;
 
@@ -349,10 +349,6 @@ bool buxton_direct_create_group(BuxtonControl *control,
 	}
 	group = malloc0(sizeof(BuxtonData));
 	if (!group) {
-		abort();
-	}
-	dpriv = malloc0(sizeof(BuxtonString));
-	if (!dpriv) {
 		abort();
 	}
 	gpriv_read = malloc0(sizeof(BuxtonString));
@@ -391,20 +387,8 @@ bool buxton_direct_create_group(BuxtonControl *control,
 		abort();
 	}
 
-	if (privilege) {
-		if (!buxton_string_copy(privilege, dpriv)) {
-			abort();
-		}
-	} else {
-		/* "" is default privilege */
-		l = buxton_string_pack("");
-		if (!buxton_string_copy(&l, dpriv)) {
-			abort();
-		}
-	}
-
 	layer->uid = control->client.uid;
-	ret = backend->set_value(layer, key, data, dpriv, dpriv);
+	ret = backend->set_value(layer, key, data, &def_priv, &def_priv);
 	if (ret) {
 		buxton_debug("create group failed: %s\n", strerror(ret));
 	} else {
