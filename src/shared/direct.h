@@ -87,13 +87,15 @@ bool buxton_direct_remove_group(BuxtonControl *control, _BuxtonKey *key)
  * @param control An initialized control structure
  * @param key The key struct
  * @param data A struct containing the data to set
- * @param privilege The privilege string
+ * @param read_priv The read privilege string
+ * @param write_priv The write privilege string
  * @return A boolean value, indicating success of the operation
  */
 bool buxton_direct_set_value(BuxtonControl *control,
 			     _BuxtonKey *key,
 			     BuxtonData *data,
-			     BuxtonString *privilege)
+			     BuxtonString *read_priv,
+			     BuxtonString *write_priv)
 	__attribute__((warn_unused_result));
 
 /**
@@ -101,13 +103,15 @@ bool buxton_direct_set_value(BuxtonControl *control,
  * @param control An initialized control structure
  * @param key The key to retrieve
  * @param data An empty BuxtonData, where data is stored
- * @param data_priv The privilege string of the data
+ * @param read_priv The read privilege string of the data
+ * @param write_priv The write privilege string of the data
  * @return A int32_t value, indicating success of the operation
  */
 int32_t buxton_direct_get_value(BuxtonControl *control,
 			     _BuxtonKey *key,
 			     BuxtonData *data,
-			     BuxtonString *data_priv)
+			     BuxtonString *read_priv,
+			     BuxtonString *write_priv)
 	__attribute__((warn_unused_result));
 
 /**
@@ -115,13 +119,15 @@ int32_t buxton_direct_get_value(BuxtonControl *control,
  * @param control An initialized control structure
  * @param key The key to retrieve
  * @param data An empty BuxtonData, where data is stored
- * @param data_priv The privilege string of the data
+ * @param read_priv The read privilege string of the data
+ * @param write_priv The write privilege string of the data
  * @return An int value, indicating success of the operation
  */
 int buxton_direct_get_value_for_layer(BuxtonControl *control,
 				       _BuxtonKey *key,
 				       BuxtonData *data,
-				       BuxtonString *data_priv)
+				       BuxtonString *read_priv,
+				       BuxtonString *write_priv)
 	__attribute__((warn_unused_result));
 
 /**

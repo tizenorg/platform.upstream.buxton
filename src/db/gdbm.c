@@ -143,7 +143,7 @@ static void make_key_data(_BuxtonKey *key, datum *key_data)
 }
 
 static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *privilege)
+		      BuxtonString *read_priv, BuxtonString *write_priv)
 {
 	GDBM_FILE db;
 	int ret = -1;
@@ -153,11 +153,11 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	_cleanup_free_ uint8_t *data_store = NULL;
 	size_t size;
 	BuxtonData cdata = {0};
-	BuxtonString cpriv;
+	BuxtonString cread_priv = { NULL, 0 };
+	BuxtonString cwrite_priv = { NULL, 0 };
 
 	assert(layer);
 	assert(key);
-	assert(privilege);
 
 	make_key_data(key, &key_data);
 
@@ -168,7 +168,7 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	}
 
 	/* set_priv will pass a NULL for data */
-	if (!data) {
+	if (!data || !read_priv || !write_priv) {
 		cvalue = gdbm_fetch(db, key_data);
 		if (cvalue.dsize < 0 || cvalue.dptr == NULL) {
 			ret = ENOENT;
@@ -176,13 +176,15 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 		}
 
 		data_store = (uint8_t*)cvalue.dptr;
-		buxton_deserialize(data_store, &cdata, &cpriv);
-		free(cpriv.value);
-		data = &cdata;
+		buxton_deserialize(data_store, cvalue.dsize, &cdata,
+				&cread_priv, &cwrite_priv);
+		data = data ? data : &cdata;
+		read_priv = read_priv ? read_priv : &cread_priv;
+		write_priv = write_priv ? write_priv : &cwrite_priv;
 		data_store = NULL;
 	}
 
-	size = buxton_serialize(data, privilege, &data_store);
+	size = buxton_serialize(data, read_priv, write_priv, &data_store);
 
 	value.dptr = (char *)data_store;
 	value.dsize = (int)size;
@@ -197,6 +199,8 @@ end:
 	if (cdata.type == BUXTON_TYPE_STRING) {
 		free(cdata.store.d_string.value);
 	}
+	free(cread_priv.value);
+	free(cwrite_priv.value);
 	free(key_data.dptr);
 	free(cvalue.dptr);
 
@@ -204,7 +208,7 @@ end:
 }
 
 static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *privilege)
+		      BuxtonString *read_priv, BuxtonString *write_priv)
 {
 	GDBM_FILE db;
 	datum key_data;
@@ -213,6 +217,8 @@ static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	int ret;
 
 	assert(layer);
+	assert(read_priv);
+	assert(write_priv);
 
 	make_key_data(key, &key_data);
 
@@ -235,11 +241,13 @@ static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	}
 
 	data_store = (uint8_t*)value.dptr;
-	buxton_deserialize(data_store, data, privilege);
+	buxton_deserialize(data_store, value.dsize, data, read_priv, write_priv);
 
 	if (data->type != key->type && key->type != BUXTON_TYPE_UNSET) {
-		free(privilege->value);
-		privilege->value = NULL;
+		free(read_priv->value);
+		read_priv->value = NULL;
+		free(write_priv->value);
+		write_priv->value = NULL;
 		if (data->type == BUXTON_TYPE_STRING) {
 			free(data->store.d_string.value);
 			data->store.d_string.value = NULL;
@@ -260,7 +268,8 @@ end:
 static int unset_value(BuxtonLayer *layer,
 			_BuxtonKey *key,
 			__attribute__((unused)) BuxtonData *data,
-			__attribute__((unused)) BuxtonString *privilege)
+			__attribute__((unused)) BuxtonString *read_priv,
+			__attribute__((unused)) BuxtonString *write_priv)
 {
 	GDBM_FILE db;
 	datum key_data;

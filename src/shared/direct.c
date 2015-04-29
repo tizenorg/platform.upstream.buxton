@@ -38,7 +38,8 @@ bool buxton_direct_open(BuxtonControl *control)
 }
 
 int32_t buxton_direct_get_value(BuxtonControl *control, _BuxtonKey *key,
-			     BuxtonData *data, BuxtonString *data_priv)
+			     BuxtonData *data, BuxtonString *read_priv,
+			     BuxtonString *write_priv)
 {
 	/* Handle direct manipulation */
 	BuxtonLayer *l;
@@ -55,7 +56,7 @@ int32_t buxton_direct_get_value(BuxtonControl *control, _BuxtonKey *key,
 
 	if (key->layer.value) {
 		ret = (int32_t)buxton_direct_get_value_for_layer(control,key, data,
-						      data_priv);
+						      read_priv, write_priv);
 		return ret;
 	}
 
@@ -67,11 +68,15 @@ int32_t buxton_direct_get_value(BuxtonControl *control, _BuxtonKey *key,
 		ret = (int32_t)buxton_direct_get_value_for_layer(control,
 						      key,
 						      &d,
-						      data_priv);
+						      read_priv,
+						      write_priv);
 		if (!ret) {
-			free(data_priv->value);
-			data_priv->value = NULL;
-			data_priv->length = 0;
+			free(read_priv->value);
+			read_priv->value = NULL;
+			read_priv->length = 0;
+			free(write_priv->value);
+			write_priv->value = NULL;
+			write_priv->length = 0;
 			if (d.type == BUXTON_TYPE_STRING) {
 				free(d.store.d_string.value);
 			}
@@ -97,7 +102,8 @@ int32_t buxton_direct_get_value(BuxtonControl *control, _BuxtonKey *key,
 		ret = (int32_t)buxton_direct_get_value_for_layer(control,
 						      key,
 						      data,
-						      data_priv);
+						      read_priv,
+						      write_priv);
 		key->layer.value = NULL;
 		key->layer.length = 0;
 
@@ -109,7 +115,8 @@ int32_t buxton_direct_get_value(BuxtonControl *control, _BuxtonKey *key,
 int buxton_direct_get_value_for_layer(BuxtonControl *control,
 				       _BuxtonKey *key,
 				       BuxtonData *data,
-				       BuxtonString *data_priv)
+				       BuxtonString *read_priv,
+				       BuxtonString *write_priv)
 {
 	/* Handle direct manipulation */
 	BuxtonBackend *backend = NULL;
@@ -117,20 +124,23 @@ int buxton_direct_get_value_for_layer(BuxtonControl *control,
 	BuxtonConfig *config;
 	BuxtonData g;
 	_BuxtonKey group;
-	BuxtonString group_priv;
+	BuxtonString group_read_priv;
+	BuxtonString group_write_priv;
 	int ret;
 
 	assert(control);
 	assert(key);
 	assert(data);
-	assert(data_priv);
+	assert(read_priv);
+	assert(write_priv);
 
 	buxton_debug("get_value '%s:%s' for layer '%s' start\n",
 		     key->group.value, key->name.value, key->layer.value);
 
 	memzero(&g, sizeof(BuxtonData));
 	memzero(&group, sizeof(_BuxtonKey));
-	memzero(&group_priv, sizeof(BuxtonString));
+	memzero(&group_read_priv, sizeof(BuxtonString));
+	memzero(&group_write_priv, sizeof(BuxtonString));
 
 	if (!key->layer.value) {
 		ret = EINVAL;
@@ -152,7 +162,8 @@ int buxton_direct_get_value_for_layer(BuxtonControl *control,
 		if (!buxton_copy_key_group(key, &group)) {
 			abort();
 		}
-		ret = buxton_direct_get_value_for_layer(control, &group, &g, &group_priv);
+		ret = buxton_direct_get_value_for_layer(control, &group, &g,
+				&group_read_priv, &group_write_priv);
 		if (ret) {
 			buxton_debug("Group %s for name %s missing for get value\n",
 					key->group.value, key->name.value);
@@ -160,14 +171,15 @@ int buxton_direct_get_value_for_layer(BuxtonControl *control,
 		}
 	}
 
-	ret = backend->get_value(layer, key, data, data_priv);
+	ret = backend->get_value(layer, key, data, read_priv, write_priv);
 
 fail:
 	free(g.store.d_string.value);
 	free(group.group.value);
 	free(group.name.value);
 	free(group.layer.value);
-	free(group_priv.value);
+	free(group_read_priv.value);
+	free(group_write_priv.value);
 	buxton_debug("get_value '%s:%s' for layer '%s' end\n",
 		     key->group.value, key->name.value, key->layer.value);
 	return ret;
@@ -176,16 +188,19 @@ fail:
 bool buxton_direct_set_value(BuxtonControl *control,
 			     _BuxtonKey *key,
 			     BuxtonData *data,
-			     BuxtonString *privilege)
+			     BuxtonString *read_priv,
+			     BuxtonString *write_priv)
 {
 	BuxtonBackend *backend;
 	BuxtonLayer *layer;
 	BuxtonConfig *config;
 	BuxtonString default_priv = buxton_string_pack("");
-	BuxtonString *l;
+	BuxtonString *priv_read;
+	BuxtonString *priv_write;
 	_cleanup_buxton_data_ BuxtonData *g = NULL;
 	_cleanup_buxton_key_ _BuxtonKey *group = NULL;
-	_cleanup_buxton_string_ BuxtonString *group_priv = NULL;
+	_cleanup_buxton_string_ BuxtonString *group_read_priv = NULL;
+	_cleanup_buxton_string_ BuxtonString *group_write_priv = NULL;
 	bool r = false;
 	int ret;
 
@@ -203,8 +218,12 @@ bool buxton_direct_set_value(BuxtonControl *control,
 	if (!g) {
 		abort();
 	}
-	group_priv = malloc0(sizeof(BuxtonString));
-	if (!group_priv) {
+	group_read_priv = malloc0(sizeof(BuxtonString));
+	if (!group_read_priv) {
+		abort();
+	}
+	group_write_priv = malloc0(sizeof(BuxtonString));
+	if (!group_write_priv) {
 		abort();
 	}
 
@@ -213,18 +232,17 @@ bool buxton_direct_set_value(BuxtonControl *control,
 		abort();
 	}
 
-	ret = buxton_direct_get_value_for_layer(control, group, g, group_priv);
+	ret = buxton_direct_get_value_for_layer(control, group, g,
+			group_read_priv, group_write_priv);
 	if (ret) {
 		buxton_debug("Error(%d): %s\n", ret, strerror(ret));
-		buxton_debug("Group %s for name %s missing for set value\n", key->group.value, key->name.value);
+		buxton_debug("Group %s for name %s missing for set value\n",
+				key->group.value, key->name.value);
 		goto fail;
 	}
 
-	if (privilege) {
-		l = privilege;
-	} else {
-		l = &default_priv;
-	}
+	priv_read = read_priv ? read_priv : &default_priv;
+	priv_write = write_priv ? write_priv : &default_priv;
 
 	config = &control->config;
 	if ((layer = hashmap_get(config->layers, key->layer.value)) == NULL) {
@@ -240,7 +258,7 @@ bool buxton_direct_set_value(BuxtonControl *control,
 	assert(backend);
 
 	layer->uid = control->client.uid;
-	ret = backend->set_value(layer, key, data, l);
+	ret = backend->set_value(layer, key, data, priv_read, priv_write);
 	if (ret) {
 		buxton_debug("set value failed: %s\n", strerror(ret));
 	} else {
@@ -295,7 +313,7 @@ bool buxton_direct_set_privilege(BuxtonControl *control,
 	assert(backend);
 
 	layer->uid = control->client.uid;
-	ret = backend->set_value(layer, key, NULL, privilege);
+	ret = backend->set_value(layer, key, NULL, privilege, privilege);
 	if (ret) {
 		buxton_debug("set privilege failed: %s\n", strerror(ret));
 	} else {
@@ -317,7 +335,8 @@ bool buxton_direct_create_group(BuxtonControl *control,
 	_cleanup_buxton_data_ BuxtonData *data = NULL;
 	_cleanup_buxton_data_ BuxtonData *group = NULL;
 	_cleanup_buxton_string_ BuxtonString *dpriv = NULL;
-	_cleanup_buxton_string_ BuxtonString *gpriv = NULL;
+	_cleanup_buxton_string_ BuxtonString *gpriv_read = NULL;
+	_cleanup_buxton_string_ BuxtonString *gpriv_write = NULL;
 	bool r = false;
 	int ret;
 
@@ -336,8 +355,12 @@ bool buxton_direct_create_group(BuxtonControl *control,
 	if (!dpriv) {
 		abort();
 	}
-	gpriv = malloc0(sizeof(BuxtonString));
-	if (!gpriv) {
+	gpriv_read = malloc0(sizeof(BuxtonString));
+	if (!gpriv_read) {
+		abort();
+	}
+	gpriv_write = malloc0(sizeof(BuxtonString));
+	if (!gpriv_write) {
 		abort();
 	}
 
@@ -352,7 +375,8 @@ bool buxton_direct_create_group(BuxtonControl *control,
 		goto fail;
 	}
 
-	if (buxton_direct_get_value_for_layer(control, key, group, gpriv) != ENOENT) {
+	if (buxton_direct_get_value_for_layer(control, key,
+				group, gpriv_read, gpriv_write) != ENOENT) {
 		buxton_debug("Group '%s' already exists\n", key->group.value);
 		goto fail;
 	}
@@ -380,7 +404,7 @@ bool buxton_direct_create_group(BuxtonControl *control,
 	}
 
 	layer->uid = control->client.uid;
-	ret = backend->set_value(layer, key, data, dpriv);
+	ret = backend->set_value(layer, key, data, dpriv, dpriv);
 	if (ret) {
 		buxton_debug("create group failed: %s\n", strerror(ret));
 	} else {
@@ -397,7 +421,8 @@ bool buxton_direct_remove_group(BuxtonControl *control, _BuxtonKey *key)
 	BuxtonLayer *layer;
 	BuxtonConfig *config;
 	_cleanup_buxton_data_ BuxtonData *group = NULL;
-	_cleanup_buxton_string_ BuxtonString *gpriv = NULL;
+	_cleanup_buxton_string_ BuxtonString *gpriv_read = NULL;
+	_cleanup_buxton_string_ BuxtonString *gpriv_write = NULL;
 	bool r = false;
 	int ret;
 
@@ -408,8 +433,12 @@ bool buxton_direct_remove_group(BuxtonControl *control, _BuxtonKey *key)
 	if (!group) {
 		abort();
 	}
-	gpriv = malloc0(sizeof(BuxtonString));
-	if (!gpriv) {
+	gpriv_read = malloc0(sizeof(BuxtonString));
+	if (!gpriv_read) {
+		abort();
+	}
+	gpriv_write = malloc0(sizeof(BuxtonString));
+	if (!gpriv_write) {
 		abort();
 	}
 
@@ -424,7 +453,8 @@ bool buxton_direct_remove_group(BuxtonControl *control, _BuxtonKey *key)
 		goto fail;
 	}
 
-	if (buxton_direct_get_value_for_layer(control, key, group, gpriv)) {
+	if (buxton_direct_get_value_for_layer(control, key,
+				group, gpriv_read, gpriv_write)) {
 		buxton_debug("Group '%s' doesn't exist\n", key->group.value);
 		goto fail;
 	}
@@ -434,7 +464,7 @@ bool buxton_direct_remove_group(BuxtonControl *control, _BuxtonKey *key)
 
 	layer->uid = control->client.uid;
 
-	ret = backend->unset_value(layer, key, NULL, NULL);
+	ret = backend->unset_value(layer, key, NULL, NULL, NULL);
 	if (ret) {
 		buxton_debug("remove group failed: %s\n", strerror(ret));
 	} else {
@@ -498,8 +528,8 @@ bool buxton_direct_unset_value(BuxtonControl *control, _BuxtonKey *key)
 	BuxtonBackend *backend;
 	BuxtonLayer *layer;
 	BuxtonConfig *config;
-	_cleanup_buxton_string_ BuxtonString *data_priv = NULL;
-	_cleanup_buxton_string_ BuxtonString *group_priv = NULL;
+	_cleanup_buxton_string_ BuxtonString *read_priv = NULL;
+	_cleanup_buxton_string_ BuxtonString *write_priv = NULL;
 	_cleanup_buxton_data_ BuxtonData *d = NULL;
 	_cleanup_buxton_data_ BuxtonData *g = NULL;
 	_cleanup_buxton_key_ _BuxtonKey *group = NULL;
@@ -517,8 +547,8 @@ bool buxton_direct_unset_value(BuxtonControl *control, _BuxtonKey *key)
 	if (!g) {
 		abort();
 	}
-	group_priv = malloc0(sizeof(BuxtonString));
-	if (!group_priv) {
+	write_priv = malloc0(sizeof(BuxtonString));
+	if (!write_priv) {
 		abort();
 	}
 
@@ -526,8 +556,8 @@ bool buxton_direct_unset_value(BuxtonControl *control, _BuxtonKey *key)
 	if (!d) {
 		abort();
 	}
-	data_priv = malloc0(sizeof(BuxtonString));
-	if (!data_priv) {
+	read_priv = malloc0(sizeof(BuxtonString));
+	if (!read_priv) {
 		abort();
 	}
 
@@ -535,13 +565,15 @@ bool buxton_direct_unset_value(BuxtonControl *control, _BuxtonKey *key)
 		abort();
 	}
 
-	if (buxton_direct_get_value_for_layer(control, group, g, group_priv)) {
+	if (buxton_direct_get_value_for_layer(control, group,
+				g, read_priv, write_priv)) {
 		buxton_debug("Group %s for name %s missing for unset value\n",
 				key->group.value, key->name.value);
 		goto fail;
 	}
 
-	if (buxton_direct_get_value_for_layer(control, key, d, data_priv)) {
+	if (buxton_direct_get_value_for_layer(control, key,
+				d, read_priv, write_priv)) {
 		buxton_debug("Key %s not found, so unset fails\n", key->name.value);
 		goto fail;
 	}
@@ -559,7 +591,7 @@ bool buxton_direct_unset_value(BuxtonControl *control, _BuxtonKey *key)
 	assert(backend);
 
 	layer->uid = control->client.uid;
-	ret = backend->unset_value(layer, key, NULL, NULL);
+	ret = backend->unset_value(layer, key, NULL, NULL, NULL);
 	if (ret) {
 		buxton_debug("Unset value failed: %s\n", strerror(ret));
 	} else {

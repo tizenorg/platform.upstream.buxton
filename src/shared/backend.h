@@ -69,11 +69,13 @@ typedef struct BuxtonLayer {
  * @param layer The layer to manipulate or query
  * @param key The key to manipulate or query
  * @param data Set or get data, dependant on operation
- * @param privilege The key's privilege
+ * @param read_priv The key's read privilege
+ * @param write_priv The key's write privilege
  * @return a int value, indicating success of the operation or errno
  */
 typedef int (*module_value_func) (BuxtonLayer *layer, _BuxtonKey *key,
-				  BuxtonData *data, BuxtonString *privilege);
+				  BuxtonData *data, BuxtonString *read_priv,
+				  BuxtonString *write_priv);
 
 /**
  * Backend key list function

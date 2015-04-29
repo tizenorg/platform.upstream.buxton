@@ -189,14 +189,16 @@ bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 		   __attribute__((unused)) char *four)
 {
 	BuxtonKey key;
-	_cleanup_free_ char *priv = NULL;
+	_cleanup_free_ char *priv_read = NULL;
+	_cleanup_free_ char *priv_write = NULL;
 	char *layer = one;
 	char *group = two;
 	char *name = three;
 
 
 	BuxtonData ddata;
-	BuxtonString dpriv;
+	BuxtonString dpriv_read;
+	BuxtonString dpriv_write;
 	bool ret = false;
 
 	if (!layer || !group) {
@@ -210,18 +212,19 @@ bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 
 	if (control->client.direct) {
 		ddata.type = BUXTON_TYPE_UNSET;
-		dpriv.value = NULL;
-		ret = buxton_direct_get_value_for_layer(control, key,
-							&ddata, &dpriv);
+		dpriv_read.value = NULL;
+		ret = buxton_direct_get_value_for_layer(control, key, &ddata,
+				&dpriv_read, &dpriv_write);
 		if (ddata.type == BUXTON_TYPE_STRING) {
 			free(ddata.store.d_string.value);
 		}
-		priv = dpriv.value;
+		priv_read = dpriv_read.value;
+		priv_write = dpriv_write.value;
 	} else {
 		ret = buxton_get_privilege(&control->client,
 					      key,
 					      get_priv_callback,
-					      &priv, true);
+					      &priv_read, true);
 	}
 	if (ret) {
 		printf("Requested key not found in layer \'%s\': %s:%s\n",
@@ -229,7 +232,8 @@ bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 		return false;
 	}
 
-	printf("[%s] %s:%s - %s\n", layer, group, name, priv);
+	printf("[%s] %s:%s - '%s' '%s'\n", layer, group, name,
+			priv_read, priv_write ? priv_write : "");
 
 	return true;
 }
@@ -259,7 +263,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						four, NULL, NULL, true);
@@ -275,7 +279,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						&set.store.d_int32, NULL,
@@ -292,7 +296,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						&set.store.d_uint32, NULL,
@@ -309,7 +313,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						&set.store.d_int64, NULL,
@@ -326,7 +330,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						&set.store.d_uint64, NULL,
@@ -343,7 +347,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						&set.store.d_float, NULL,
@@ -360,7 +364,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						&set.store.d_double, NULL,
@@ -391,7 +395,7 @@ bool cli_set_value(BuxtonControl *control, BuxtonDataType type,
 		if (control->client.direct) {
 			ret = buxton_direct_set_value(control,
 						      (_BuxtonKey *)key,
-						      &set, NULL);
+						      &set, NULL, NULL);
 		} else {
 			ret = !buxton_set_value(&control->client, key,
 						&set.store.d_boolean,
@@ -484,7 +488,8 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	_cleanup_free_ char *name = NULL;
 	_cleanup_free_ char *value = NULL;
 	const char *tname = NULL;
-	BuxtonString dpriv;
+	BuxtonString dpriv_read;
+	BuxtonString dpriv_write;
 	bool ret = false;
 	int32_t ret_val;
 	int r;
@@ -511,7 +516,7 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 	if (three != NULL) {
 		if (control->client.direct) {
 			ret = buxton_direct_get_value_for_layer(control, key,
-								&get, &dpriv);
+					&get, &dpriv_read, &dpriv_write);
 		} else {
 			ret = buxton_get_value(&control->client,
 						      key,
@@ -527,7 +532,8 @@ bool cli_get_value(BuxtonControl *control, BuxtonDataType type,
 		}
 	} else {
 		if (control->client.direct) {
-			ret_val = buxton_direct_get_value(control, key, &get, &dpriv);
+			ret_val = buxton_direct_get_value(control, key, &get,
+					&dpriv_read, &dpriv_write);
 			if (ret_val == 0) {
 				ret = true;
 			}

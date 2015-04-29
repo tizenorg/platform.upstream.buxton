@@ -27,20 +27,26 @@
 #include "util.h"
 
 
-size_t buxton_serialize(BuxtonData *source, BuxtonString *privilege,
-			uint8_t **target)
+size_t buxton_serialize(BuxtonData *source, BuxtonString *read_priv,
+			BuxtonString *write_priv, uint8_t **target)
 {
 	size_t length;
 	size_t size;
 	size_t offset = 0;
 	uint8_t *data = NULL;
 	size_t ret = 0;
+	BuxtonString def_priv = buxton_string_pack("");
 
 	assert(source);
 	assert(target);
 
+	read_priv = read_priv ? read_priv : &def_priv;
+	write_priv = write_priv ? write_priv : &def_priv;
+
 	/* DataType + length field */
-	size = sizeof(BuxtonDataType) + (sizeof(uint32_t) * 2) + privilege->length;
+	size = sizeof(BuxtonDataType) + sizeof(uint32_t)
+		+ sizeof(uint32_t) + read_priv->length
+		+ sizeof(uint32_t) + write_priv->length;
 
 	/* Total size will be different for string data */
 	switch (source->type) {
@@ -60,21 +66,39 @@ size_t buxton_serialize(BuxtonData *source, BuxtonString *privilege,
 		abort();
 	}
 
+	/*
+	 * Serialized data format:
+	 * +----------+------------------+------------------+--------------
+	 * | Type (4) | R. Priv. Len (4) | W. Priv. Len (4) | Data Len (4)
+	 * +----------+------------------+------------------+--------------
+	 * -+------------+-------------+------+
+	 *  | Read Priv. | Write Priv. | Data |
+	 * -+------------+-------------+------+
+	 */
+
 	/* Write the entire BuxtonDataType to the first block */
 	memcpy(data, &(source->type), sizeof(BuxtonDataType));
 	offset += sizeof(BuxtonDataType);
 
-	/* Write out the length of the privilege field */
-	memcpy(data+offset, &(privilege->length), sizeof(uint32_t));
+	/* Write out the length of the read privilege field */
+	memcpy(data+offset, &(read_priv->length), sizeof(uint32_t));
+	offset += sizeof(uint32_t);
+
+	/* Write out the length of the write privilege field */
+	memcpy(data+offset, &(write_priv->length), sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
 	/* Write out the length of the data field */
 	memcpy(data+offset, &length, sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
-	/* Write out the privilege field */
-	memcpy(data+offset, privilege->value, privilege->length);
-	offset += privilege->length;
+	/* Write out the read privilege field */
+	memcpy(data+offset, read_priv->value, read_priv->length);
+	offset += read_priv->length;
+
+	/* Write out the write privilege field */
+	memcpy(data+offset, write_priv->value, write_priv->length);
+	offset += write_priv->length;
 
 	/* Write the data itself */
 	switch (source->type) {
@@ -114,8 +138,8 @@ size_t buxton_serialize(BuxtonData *source, BuxtonString *privilege,
 	return ret;
 }
 
-void buxton_deserialize(uint8_t *source, BuxtonData *target,
-			BuxtonString *privilege)
+static void buxton_deserialize_v6(uint8_t *source, BuxtonData *target,
+			BuxtonString *read_priv, BuxtonString *write_priv)
 {
 	size_t offset = 0;
 	size_t length = 0;
@@ -123,27 +147,40 @@ void buxton_deserialize(uint8_t *source, BuxtonData *target,
 
 	assert(source);
 	assert(target);
-	assert(privilege);
+	assert(read_priv);
+	assert(write_priv);
 
 	/* Retrieve the BuxtonDataType */
 	type = *(BuxtonDataType*)source;
 	offset += sizeof(BuxtonDataType);
 
-	/* Retrieve the length of the privilege */
-	privilege->length = *(uint32_t*)(source+offset);
+	/* Retrieve the length of the read privilege */
+	read_priv->length = *(uint32_t*)(source+offset);
+	offset += sizeof(uint32_t);
+
+	/* Retrieve the length of the write privilege */
+	write_priv->length = *(uint32_t*)(source+offset);
 	offset += sizeof(uint32_t);
 
 	/* Retrieve the length of the value */
 	length = *(uint32_t*)(source+offset);
 	offset += sizeof(uint32_t);
 
-	/* Retrieve the privilege */
-	privilege->value = malloc(privilege->length);
-	if (privilege->length > 0 && !privilege->value) {
+	/* Retrieve the read privilege */
+	read_priv->value = malloc(read_priv->length);
+	if (read_priv->length > 0 && !read_priv->value) {
 		abort();
 	}
-	memcpy(privilege->value, source+offset, privilege->length);
-	offset += privilege->length;
+	memcpy(read_priv->value, source+offset, read_priv->length);
+	offset += read_priv->length;
+
+	/* Retrieve the write privilege */
+	write_priv->value = malloc(write_priv->length);
+	if (write_priv->length > 0 && !write_priv->value) {
+		abort();
+	}
+	memcpy(write_priv->value, source+offset, write_priv->length);
+	offset += write_priv->length;
 
 	switch (type) {
 	case BUXTON_TYPE_STRING:
@@ -183,6 +220,116 @@ void buxton_deserialize(uint8_t *source, BuxtonData *target,
 
 	/* Successful */
 	target->type = type;
+}
+
+static void buxton_deserialize_v5(uint8_t *source, BuxtonData *target,
+			BuxtonString *read_priv, BuxtonString *write_priv)
+{
+	size_t offset = 0;
+	size_t length = 0;
+	BuxtonDataType type;
+
+	assert(source);
+	assert(target);
+	assert(read_priv);
+	assert(write_priv);
+
+	/* Retrieve the BuxtonDataType */
+	type = *(BuxtonDataType*)source;
+	offset += sizeof(BuxtonDataType);
+
+	/* Retrieve the length of the privilege */
+	write_priv->length = read_priv->length = *(uint32_t*)(source+offset);
+	offset += sizeof(uint32_t);
+
+	/* Retrieve the length of the value */
+	length = *(uint32_t*)(source+offset);
+	offset += sizeof(uint32_t);
+
+	/* Retrieve the privilege */
+	read_priv->value = malloc(read_priv->length);
+	if (read_priv->length > 0 && !read_priv->value) {
+		abort();
+	}
+	write_priv->value = malloc(write_priv->length);
+	if (write_priv->length > 0 && !write_priv->value) {
+		abort();
+	}
+	/* copy the same privilege to both read and write privilege */
+	memcpy(read_priv->value, source+offset, read_priv->length);
+	memcpy(write_priv->value, source+offset, write_priv->length);
+	offset += read_priv->length;
+
+	switch (type) {
+	case BUXTON_TYPE_STRING:
+		/* User must free the string */
+		target->store.d_string.value = malloc(length);
+		if (!target->store.d_string.value) {
+			abort();
+		}
+		memcpy(target->store.d_string.value, source+offset, length);
+		target->store.d_string.length = (uint32_t)length;
+		break;
+	case BUXTON_TYPE_INT32:
+		target->store.d_int32 = *(int32_t*)(source+offset);
+		break;
+	case BUXTON_TYPE_UINT32:
+		target->store.d_uint32 = *(uint32_t*)(source+offset);
+		break;
+	case BUXTON_TYPE_INT64:
+		target->store.d_int64 = *(int64_t*)(source+offset);
+		break;
+	case BUXTON_TYPE_UINT64:
+		target->store.d_uint64 = *(uint64_t*)(source+offset);
+		break;
+	case BUXTON_TYPE_FLOAT:
+		target->store.d_float = *(float*)(source+offset);
+		break;
+	case BUXTON_TYPE_DOUBLE:
+		memcpy(&target->store.d_double, source + offset, sizeof(double));
+		break;
+	case BUXTON_TYPE_BOOLEAN:
+		target->store.d_boolean = *(bool*)(source+offset);
+		break;
+	default:
+		buxton_debug("Invalid BuxtonDataType: %lu\n", type);
+		abort();
+	}
+
+	/* Successful */
+	target->type = type;
+}
+
+void buxton_deserialize(uint8_t *source, size_t len, BuxtonData *target,
+			BuxtonString *read_priv, BuxtonString *write_priv)
+{
+	size_t offset;
+	size_t length;
+
+	offset = 0;
+	length = sizeof(BuxtonDataType) + sizeof(uint32_t) + sizeof(uint32_t);
+
+	/* Retrieve the length of the privilege (or read privilege in Ver 6) */
+	offset += sizeof(BuxtonDataType);
+	length += *(uint32_t *)(source + offset);
+
+	/* Retrieve the length of the value (or write privilege in Ver 6) */
+	offset += sizeof(uint32_t);
+	length += *(uint32_t *)(source + offset);
+
+	if (length == len) {
+		buxton_deserialize_v5(source, target, read_priv, write_priv);
+		return;
+	}
+
+	length += sizeof(uint32_t);
+
+	/* Retrieve the length of the value in Ver 6 */
+	offset += sizeof(uint32_t);
+	length += *(uint32_t *)(source + offset);
+
+	assert(length == len);
+	buxton_deserialize_v6(source, target, read_priv, write_priv);
 }
 
 size_t buxton_serialize_message(uint8_t **dest, BuxtonControlMessage message,

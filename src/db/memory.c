@@ -43,7 +43,8 @@ struct keyrec {
 /* structure for storing values */
 struct valrec {
 	BuxtonData data;    /**< Recorded data */
-	BuxtonString privilege; /**< Recorded privilege */
+	BuxtonString read_priv; /**< Recorded read privilege */
+	BuxtonString write_priv; /**< Recorded write privilege */
 };
 
 /* creates a keyrec from the key */
@@ -115,16 +116,18 @@ static void free_valrec(struct valrec *item)
 		if (item->data.type == BUXTON_TYPE_STRING) {
 			free(item->data.store.d_string.value);
 		}
-		free(item->privilege.value);
+		free(item->read_priv.value);
+		free(item->write_priv.value);
 		free(item);
 	}
 }
 
 static bool set_valrec(struct valrec *item, BuxtonData *data,
-			      BuxtonString *privilege)
+			      BuxtonString *read_priv, BuxtonString *write_priv)
 {
 	char *sdata;
-	char *spriv;
+	char *spriv_read;
+	char *spriv_write;
 
 	/* allocate data if needed */
 	if (data && data->type == BUXTON_TYPE_STRING &&
@@ -139,16 +142,29 @@ static bool set_valrec(struct valrec *item, BuxtonData *data,
 		sdata = NULL;
 	}
 
-	/* allocate privilege if needed */
-	if (privilege && privilege->value) {
-		spriv = malloc(privilege->length);
-		if (!spriv) {
+	/* allocate read privilege if needed */
+	if (read_priv && read_priv->value) {
+		spriv_read = malloc(read_priv->length);
+		if (!spriv_read) {
 			free(sdata);
 			return false;
 		}
-		memcpy(spriv, privilege->value, privilege->length);
+		memcpy(spriv_read, read_priv->value, read_priv->length);
 	} else {
-		spriv = NULL;
+		spriv_read = NULL;
+	}
+
+	/* allocate write privilege if needed */
+	if (write_priv && write_priv->value) {
+		spriv_write = malloc(write_priv->length);
+		if (!spriv_write) {
+			free(spriv_read);
+			free(sdata);
+			return false;
+		}
+		memcpy(spriv_write, write_priv->value, write_priv->length);
+	} else {
+		spriv_write = NULL;
 	}
 
 	/* copy now */
@@ -162,10 +178,16 @@ static bool set_valrec(struct valrec *item, BuxtonData *data,
 		}
 	}
 
-	if (privilege) {
-		free(item->privilege.value);
-		item->privilege.length = privilege->length;
-		item->privilege.value = spriv;
+	if (read_priv) {
+		free(item->read_priv.value);
+		item->read_priv.length = read_priv->length;
+		item->read_priv.value = spriv_read;
+	}
+
+	if (write_priv) {
+		free(item->write_priv.value);
+		item->write_priv.length = write_priv->length;
+		item->write_priv.value = spriv_write;
 	}
 
 	return true;
@@ -203,16 +225,16 @@ static Hashmap *_db_for_resource(BuxtonLayer *layer)
 }
 
 static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *privilege)
+		      BuxtonString *read_priv, BuxtonString *write_priv)
 {
 	Hashmap *db;
 	int ret;
 	struct keyrec *keyrec;
 	struct valrec *valrec;
+	BuxtonString def_priv = buxton_string_pack("");
 
 	assert(layer);
 	assert(key);
-	assert(privilege);
 
 	db = _db_for_resource(layer);
 	if (!db) {
@@ -228,7 +250,7 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	valrec = hashmap_get(db, keyrec);
 	if (valrec) {
 		free_keyrec(keyrec);
-		if (!set_valrec(valrec, data, privilege)) {
+		if (!set_valrec(valrec, data, read_priv, write_priv)) {
 			abort();
 		}
 	} else {
@@ -236,11 +258,16 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 			ret = ENOENT;
 			goto end;
 		}
+
 		valrec = calloc(1, sizeof * valrec);
 		if (!valrec) {
 			abort();
 		}
-		if (!set_valrec(valrec, data, privilege) ||
+
+		read_priv = read_priv ? read_priv : &def_priv;
+		write_priv = write_priv ? write_priv : &def_priv;
+
+		if (!set_valrec(valrec, data, read_priv, write_priv) ||
 		    hashmap_put(db, keyrec, valrec) != 1) {
 			abort();
 		}
@@ -253,7 +280,7 @@ end:
 }
 
 static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
-		      BuxtonString *privilege)
+		      BuxtonString *read_priv, BuxtonString *write_priv)
 {
 	Hashmap *db;
 	int ret;
@@ -262,7 +289,8 @@ static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 
 	assert(layer);
 	assert(key);
-	assert(privilege);
+	assert(read_priv);
+	assert(write_priv);
 	assert(data);
 
 	db = _db_for_resource(layer);
@@ -298,7 +326,11 @@ static int get_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 		abort();
 	}
 
-	if (!buxton_string_copy(&valrec->privilege, privilege)) {
+	if (!buxton_string_copy(&valrec->read_priv, read_priv)) {
+		abort();
+	}
+
+	if (!buxton_string_copy(&valrec->write_priv, write_priv)) {
 		abort();
 	}
 
@@ -391,7 +423,8 @@ end:
 static int unset_value(BuxtonLayer *layer,
 			_BuxtonKey *key,
 			__attribute__((unused)) BuxtonData *data,
-			__attribute__((unused)) BuxtonString *privilege)
+			__attribute__((unused)) BuxtonString *read_priv,
+			__attribute__((unused)) BuxtonString *write_priv)
 {
 	assert(layer);
 	assert(key);

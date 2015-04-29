@@ -98,43 +98,36 @@ static void buxton_cynara_status_cb(int old_fd, int new_fd,
 }
 
 static char *buxton_cynara_get_priv_str(BuxtonControlMessage msg,
-		BuxtonString *priv)
+		BuxtonString *priv_read, BuxtonString *priv_write)
 {
 	char *str;
-	const char *suffix;
-	size_t suffix_len;
-
-	if (!priv || !priv->value)
-		return NULL;
+	BuxtonString *priv;
 
 	switch (msg) {
 	case BUXTON_CONTROL_SET:
 	case BUXTON_CONTROL_UNSET:
 	case BUXTON_CONTROL_REMOVE_GROUP:
-		suffix = ".write";
+		priv = priv_write;
 		break;
 	case BUXTON_CONTROL_GET:
 	case BUXTON_CONTROL_GET_PRIV:
 	case BUXTON_CONTROL_NOTIFY:
-		suffix = ".read";
+		priv = priv_read;
 		break;
 	default:
-		suffix = "";
+		priv = NULL;
 		break;
 	}
 
-	suffix_len = strlen(suffix);
+	if (!priv || !priv->value)
+		return NULL;
 
-	/* privilege + suffix + '\0' */
-	str = malloc0(priv->length + suffix_len + 1);
+	str = malloc0(priv->length);
 	if (!str)
 		return NULL;
 
 	/* is BuxtonString null-terminated? */
-	memcpy(str, priv->value, priv->length - 1);
-
-	if (suffix_len > 0)
-		memcpy(str + priv->length - 1, suffix, suffix_len);
+	memcpy(str, priv->value, priv->length);
 
 	return str;
 }
@@ -142,31 +135,37 @@ static char *buxton_cynara_get_priv_str(BuxtonControlMessage msg,
 static char *buxton_cynara_get_priv(BuxtonControl *control,
 		_BuxtonKey *key, BuxtonControlMessage msg)
 {
-	BuxtonString *priv;
+	BuxtonString *priv_read;
+	BuxtonString *priv_write;
 	BuxtonData data;
 	int ret;
 	char *str;
 
-	priv = malloc0(sizeof(BuxtonString));
-	if (!priv)
+	priv_read = malloc0(sizeof(BuxtonString));
+	if (!priv_read)
+		abort();
+	priv_write = malloc0(sizeof(BuxtonString));
+	if (!priv_write)
 		abort();
 
 	memzero(&data, sizeof(BuxtonData));
-	ret = buxton_direct_get_value(control, key, &data, priv);
+	ret = buxton_direct_get_value(control, key, &data,
+			priv_read, priv_write);
 
 	if (data.type == BUXTON_TYPE_STRING)
 		free(data.store.d_string.value);
 
 	if (ret) {
-		free(priv);
+		free(priv_read);
+		free(priv_write);
 		return NULL;
 	}
 
-	str = buxton_cynara_get_priv_str(msg, priv);
-	buxton_debug("privilege string: '%s' %d '%s'\n",
-			priv->value, priv->length, str);
+	str = buxton_cynara_get_priv_str(msg, priv_read, priv_write);
+	buxton_debug("privilege string: '%s'\n", str);
 
-	string_free(priv);
+	string_free(priv_read);
+	string_free(priv_write);
 
 	return str;
 }

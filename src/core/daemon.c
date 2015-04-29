@@ -775,7 +775,7 @@ void set_value(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 
 	self->buxton.client.uid = client->cred.uid;
 
-	if (!buxton_direct_set_value(&self->buxton, key, value, NULL)) {
+	if (!buxton_direct_set_value(&self->buxton, key, value, NULL, NULL)) {
 		return;
 	}
 
@@ -892,7 +892,8 @@ BuxtonData *get_value(BuxtonDaemon *self, client_list_item *client,
 		      _BuxtonKey *key, int32_t *status)
 {
 	BuxtonData *data = NULL;
-	BuxtonString priv;
+	BuxtonString priv_read;
+	BuxtonString priv_write;
 	int32_t ret;
 
 	assert(self);
@@ -915,12 +916,14 @@ BuxtonData *get_value(BuxtonDaemon *self, client_list_item *client,
 			     key->name.value);
 	}
 	self->buxton.client.uid = client->cred.uid;
-	ret = buxton_direct_get_value(&self->buxton, key, data, &priv);
+	ret = buxton_direct_get_value(&self->buxton, key, data,
+			&priv_read, &priv_write);
 	if (ret) {
 		goto fail;
 	}
 
-	free(priv.value);
+	free(priv_read.value);
+	free(priv_write.value);
 	buxton_debug("get value returned successfully from db\n");
 
 	*status = 0;
@@ -938,7 +941,8 @@ BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
 		      _BuxtonKey *key, int32_t *status)
 {
 	BuxtonData *data = NULL;
-	BuxtonString priv = { NULL, 0 };
+	BuxtonString priv_read = { NULL, 0 };
+	BuxtonString priv_write = { NULL, 0 };
 	int32_t ret;
 
 	assert(self);
@@ -960,7 +964,8 @@ BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
 
 	self->buxton.client.uid = client->cred.uid;
 
-	ret = buxton_direct_get_value(&self->buxton, key, data, &priv);
+	ret = buxton_direct_get_value(&self->buxton, key, data,
+			&priv_read, &priv_write);
 	if (ret) {
 		goto fail;
 	}
@@ -969,7 +974,11 @@ BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
 		free(data->store.d_string.value);
 	}
 	data->type = BUXTON_TYPE_STRING;
-	data->store.d_string = priv;
+
+	/* TODO : priv_write ? */
+	free(priv_write.value);
+
+	data->store.d_string = priv_read;
 	buxton_debug("get privilege returned successfully from db\n");
 
 	*status = 0;
@@ -977,7 +986,8 @@ BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
 fail:
 	buxton_debug("get privilege failed\n");
 	free(data);
-	free(priv.value);
+	free(priv_read.value);
+	free(priv_write.value);
 	data = NULL;
 end:
 
