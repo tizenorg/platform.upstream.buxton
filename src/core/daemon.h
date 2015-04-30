@@ -139,6 +139,28 @@ void set_priv(BuxtonDaemon *self, client_list_item *client,
 	       _BuxtonKey *key, BuxtonData *value, int32_t *status);
 
 /**
+ * Buxton daemon function for setting a read privilege
+ * @param self buxtond instance being run
+ * @param client Used to validate smack access
+ * @param key Key or group for the privilege being set
+ * @param value Label being set
+ * @param status Will be set with the int32_t result of the operation
+ */
+void set_read_priv(BuxtonDaemon *self, client_list_item *client,
+	       _BuxtonKey *key, BuxtonData *value, int32_t *status);
+
+/**
+ * Buxton daemon function for setting a write privilege
+ * @param self buxtond instance being run
+ * @param client Used to validate smack access
+ * @param key Key or group for the privilege being set
+ * @param value Label being set
+ * @param status Will be set with the int32_t result of the operation
+ */
+void set_write_priv(BuxtonDaemon *self, client_list_item *client,
+	       _BuxtonKey *key, BuxtonData *value, int32_t *status);
+
+/**
  * Buxton daemon function for creating a group
  * @param self buxtond instance being run
  * @param client Used to validate smack access

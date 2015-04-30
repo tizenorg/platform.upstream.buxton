@@ -270,9 +270,9 @@ fail:
 	return r;
 }
 
-bool buxton_direct_set_privilege(BuxtonControl *control,
+static bool buxton_direct_set_privileges(BuxtonControl *control,
 			     _BuxtonKey *key,
-			     BuxtonString *privilege)
+			     BuxtonString *read_priv, BuxtonString *write_priv)
 {
 	BuxtonBackend *backend;
 	BuxtonLayer *layer;
@@ -282,7 +282,6 @@ bool buxton_direct_set_privilege(BuxtonControl *control,
 
 	assert(control);
 	assert(key);
-	assert(privilege);
 
 	config = &control->config;
 
@@ -313,7 +312,7 @@ bool buxton_direct_set_privilege(BuxtonControl *control,
 	assert(backend);
 
 	layer->uid = control->client.uid;
-	ret = backend->set_value(layer, key, NULL, privilege, privilege);
+	ret = backend->set_value(layer, key, NULL, read_priv, write_priv);
 	if (ret) {
 		buxton_debug("set privilege failed: %s\n", strerror(ret));
 	} else {
@@ -322,6 +321,27 @@ bool buxton_direct_set_privilege(BuxtonControl *control,
 
 fail:
 	return r;
+}
+
+bool buxton_direct_set_privilege(BuxtonControl *control,
+			     _BuxtonKey *key,
+			     BuxtonString *privilege)
+{
+	return buxton_direct_set_privileges(control, key, privilege, privilege);
+}
+
+bool buxton_direct_set_read_privilege(BuxtonControl *control,
+			     _BuxtonKey *key,
+			     BuxtonString *privilege)
+{
+	return buxton_direct_set_privileges(control, key, privilege, NULL);
+}
+
+bool buxton_direct_set_write_privilege(BuxtonControl *control,
+			     _BuxtonKey *key,
+			     BuxtonString *privilege)
+{
+	return buxton_direct_set_privileges(control, key, NULL, privilege);
 }
 
 bool buxton_direct_create_group(BuxtonControl *control,

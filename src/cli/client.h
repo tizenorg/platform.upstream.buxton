@@ -99,6 +99,14 @@ bool cli_set_privilege(BuxtonControl *control,
 		   __attribute__((unused)) BuxtonDataType type,
 		   char *one, char *two, char *three, char *four)
 	__attribute__((warn_unused_result));
+bool cli_set_read_privilege(BuxtonControl *control,
+		   __attribute__((unused)) BuxtonDataType type,
+		   char *one, char *two, char *three, char *four)
+	__attribute__((warn_unused_result));
+bool cli_set_write_privilege(BuxtonControl *control,
+		   __attribute__((unused)) BuxtonDataType type,
+		   char *one, char *two, char *three, char *four)
+	__attribute__((warn_unused_result));
 
 /**
  * Create a group in Buxton

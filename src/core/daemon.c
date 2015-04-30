@@ -62,6 +62,8 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 		*value = &(list[3]);
 		break;
 	case BUXTON_CONTROL_SET_PRIV:
+	case BUXTON_CONTROL_SET_READ_PRIV:
+	case BUXTON_CONTROL_SET_WRITE_PRIV:
 		if (count == 3) {
 			if (list[0].type != BUXTON_TYPE_STRING || list[1].type != BUXTON_TYPE_STRING ||
 			    list[2].type != BUXTON_TYPE_STRING) {
@@ -295,6 +297,12 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	case BUXTON_CONTROL_SET_PRIV:
 		set_priv(self, client, &key, value, &response);
 		break;
+	case BUXTON_CONTROL_SET_READ_PRIV:
+		set_read_priv(self, client, &key, value, &response);
+		break;
+	case BUXTON_CONTROL_SET_WRITE_PRIV:
+		set_write_priv(self, client, &key, value, &response);
+		break;
 	case BUXTON_CONTROL_CREATE_GROUP:
 		create_group(self, client, &key, &response);
 		break;
@@ -355,6 +363,8 @@ send_response:
 		}
 		break;
 	case BUXTON_CONTROL_SET_PRIV:
+	case BUXTON_CONTROL_SET_READ_PRIV:
+	case BUXTON_CONTROL_SET_WRITE_PRIV:
 		response_len = buxton_serialize_message(&response_store,
 							BUXTON_CONTROL_STATUS,
 							msgid, out_list);
@@ -569,6 +579,8 @@ void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
 		register_notification(self, client, key, msgid, &response);
 		break;
 	case BUXTON_CONTROL_SET_PRIV:
+	case BUXTON_CONTROL_SET_READ_PRIV:
+	case BUXTON_CONTROL_SET_WRITE_PRIV:
 	case BUXTON_CONTROL_CREATE_GROUP:
 	case BUXTON_CONTROL_LIST:
 	case BUXTON_CONTROL_LIST_NAMES:
@@ -809,6 +821,62 @@ void set_priv(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
 
 	*status = 0;
 	buxton_debug("Daemon set privilege completed\n");
+}
+
+void set_read_priv(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
+	       BuxtonData *value, int32_t *status)
+{
+
+	assert(self);
+	assert(client);
+	assert(key);
+	assert(value);
+	assert(status);
+
+	*status = -1;
+
+	buxton_debug("Daemon setting read privilege on [%s][%s][%s]\n",
+		     key->layer.value,
+		     key->group.value,
+		     key->name.value);
+
+	self->buxton.client.uid = client->cred.uid;
+
+	/* Use internal library to set privilege */
+	if (!buxton_direct_set_read_privilege(&self->buxton, key, &value->store.d_string)) {
+		return;
+	}
+
+	*status = 0;
+	buxton_debug("Daemon set read privilege completed\n");
+}
+
+void set_write_priv(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,
+	       BuxtonData *value, int32_t *status)
+{
+
+	assert(self);
+	assert(client);
+	assert(key);
+	assert(value);
+	assert(status);
+
+	*status = -1;
+
+	buxton_debug("Daemon setting write privilege on [%s][%s][%s]\n",
+		     key->layer.value,
+		     key->group.value,
+		     key->name.value);
+
+	self->buxton.client.uid = client->cred.uid;
+
+	/* Use internal library to set privilege */
+	if (!buxton_direct_set_write_privilege(&self->buxton, key, &value->store.d_string)) {
+		return;
+	}
+
+	*status = 0;
+	buxton_debug("Daemon set write privilege completed\n");
 }
 
 void create_group(BuxtonDaemon *self, client_list_item *client, _BuxtonKey *key,

@@ -75,6 +75,8 @@ typedef enum BuxtonControlMessage {
 	BUXTON_CONTROL_CHANGED, /**<A key changed in Buxton */
 	BUXTON_CONTROL_GET_PRIV, /**<Get a privilege from Buxton */
 	BUXTON_CONTROL_LIST_NAMES, /**<List names within Buxton */
+	BUXTON_CONTROL_SET_READ_PRIV, /**<Set a read privilege */
+	BUXTON_CONTROL_SET_WRITE_PRIV, /**<Set a write privilege */
 	BUXTON_CONTROL_MAX
 } BuxtonControlMessage;
 
@@ -166,6 +168,7 @@ _bx_export_ int buxton_set_label(BuxtonClient client,
  * Set a privilege within Buxton
  *
  * @note This is a privileged operation; the return value will be false for unprivileged clients.
+ * @note From ver. 6, This function sets both read and write privileges.
  *
  * @param client An open client connection
  * @param layer The layer to manipulate
@@ -177,6 +180,52 @@ _bx_export_ int buxton_set_label(BuxtonClient client,
  * @return An int value, indicating success of the operation
  */
 _bx_export_ int buxton_set_privilege(BuxtonClient client,
+				 BuxtonKey key,
+				 const char *value,
+				 BuxtonCallback callback,
+				 void *data,
+				 bool sync)
+	__attribute__((warn_unused_result));
+
+/**
+ * Set a read privilege within Buxton
+ *
+ * @note This is a privileged operation; the return value will be false for unprivileged clients.
+ * @note From ver. 6, This function sets both read and write privileges.
+ *
+ * @param client An open client connection
+ * @param layer The layer to manipulate
+ * @param key The key or group name
+ * @param value A struct containing the privilege to set
+ * @param callback A callback function to handle daemon reply
+ * @param data User data to be used with callback function
+ * @param sync Indicator for running a synchronous request
+ * @return An int value, indicating success of the operation
+ */
+_bx_export_ int buxton_set_read_privilege(BuxtonClient client,
+				 BuxtonKey key,
+				 const char *value,
+				 BuxtonCallback callback,
+				 void *data,
+				 bool sync)
+	__attribute__((warn_unused_result));
+
+/**
+ * Set a write privilege within Buxton
+ *
+ * @note This is a privileged operation; the return value will be false for unprivileged clients.
+ * @note From ver. 6, This function sets both read and write privileges.
+ *
+ * @param client An open client connection
+ * @param layer The layer to manipulate
+ * @param key The key or group name
+ * @param value A struct containing the privilege to set
+ * @param callback A callback function to handle daemon reply
+ * @param data User data to be used with callback function
+ * @param sync Indicator for running a synchronous request
+ * @return An int value, indicating success of the operation
+ */
+_bx_export_ int buxton_set_write_privilege(BuxtonClient client,
 				 BuxtonKey key,
 				 const char *value,
 				 BuxtonCallback callback,

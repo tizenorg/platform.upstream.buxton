@@ -273,12 +273,13 @@ int buxton_set_value(BuxtonClient client,
 	return ret;
 }
 
-int buxton_set_privilege(BuxtonClient client,
+static int buxton_set_privileges(BuxtonClient client,
 		     BuxtonKey key,
 		     const char *value,
 		     BuxtonCallback callback,
 		     void *data,
-		     bool sync)
+		     bool sync,
+		     BuxtonControlMessage msg)
 {
 	bool r;
 	int ret = 0;
@@ -288,12 +289,17 @@ int buxton_set_privilege(BuxtonClient client,
 	if (!k || !k->group.value || !k->layer.value || !value) {
 		return EINVAL;
 	}
+	if (msg != BUXTON_CONTROL_SET_PRIV
+			&& msg != BUXTON_CONTROL_SET_READ_PRIV
+			&& msg != BUXTON_CONTROL_SET_WRITE_PRIV) {
+		return EINVAL;
+	}
 
 	/* discarding const until BuxtonString updated */
 	v = buxton_string_pack((char*)value);
 
 	r = buxton_wire_set_priv((_BuxtonClient *)client, k, &v, callback,
-				  data);
+				  data, msg);
 	if (!r) {
 		return -1;
 	}
@@ -308,6 +314,39 @@ int buxton_set_privilege(BuxtonClient client,
 	}
 
 	return ret;
+}
+
+int buxton_set_privilege(BuxtonClient client,
+		     BuxtonKey key,
+		     const char *value,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	return buxton_set_privileges(client, key, value, callback, data, sync,
+			BUXTON_CONTROL_SET_PRIV);
+}
+
+int buxton_set_read_privilege(BuxtonClient client,
+		     BuxtonKey key,
+		     const char *value,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	return buxton_set_privileges(client, key, value, callback, data, sync,
+			BUXTON_CONTROL_SET_READ_PRIV);
+}
+
+int buxton_set_write_privilege(BuxtonClient client,
+		     BuxtonKey key,
+		     const char *value,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	return buxton_set_privileges(client, key, value, callback, data, sync,
+			BUXTON_CONTROL_SET_WRITE_PRIV);
 }
 
 int buxton_set_label(BuxtonClient client,

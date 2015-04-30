@@ -114,6 +114,86 @@ bool cli_set_privilege(BuxtonControl *control, BuxtonDataType type,
 	return ret;
 }
 
+bool cli_set_read_privilege(BuxtonControl *control, BuxtonDataType type,
+		   char *one, char *two, char *three, char *four)
+{
+	BuxtonString privilege;
+	BuxtonKey key;
+	bool ret = false;
+
+	if (four != NULL) {
+		key = buxton_key_create(two, three, one, type);
+	} else {
+		key = buxton_key_create(two, NULL, one, type);
+	}
+
+	if (!key) {
+		return ret;
+	}
+
+	if (four != NULL) {
+		privilege = buxton_string_pack(four);
+	} else {
+		privilege = buxton_string_pack(three);
+	}
+
+	if (control->client.direct) {
+		ret = buxton_direct_set_read_privilege(control, (_BuxtonKey *)key, &privilege);
+	} else {
+		ret = !buxton_set_read_privilege(&control->client, key, privilege.value,
+					NULL, NULL, true);
+	}
+
+	if (!ret) {
+		char *name = get_name(key);
+		printf("Failed to update key \'%s:%s\' privilege in layer '%s'\n",
+		       two, nv(name), one);
+		free(name);
+	}
+	buxton_key_free(key);
+	return ret;
+}
+
+bool cli_set_write_privilege(BuxtonControl *control, BuxtonDataType type,
+		   char *one, char *two, char *three, char *four)
+{
+	BuxtonString privilege;
+	BuxtonKey key;
+	bool ret = false;
+
+	if (four != NULL) {
+		key = buxton_key_create(two, three, one, type);
+	} else {
+		key = buxton_key_create(two, NULL, one, type);
+	}
+
+	if (!key) {
+		return ret;
+	}
+
+	if (four != NULL) {
+		privilege = buxton_string_pack(four);
+	} else {
+		privilege = buxton_string_pack(three);
+	}
+
+	if (control->client.direct) {
+		ret = buxton_direct_set_write_privilege(control, (_BuxtonKey *)key, &privilege);
+	} else {
+		ret = !buxton_set_write_privilege(&control->client, key, privilege.value,
+					NULL, NULL, true);
+	}
+
+	if (!ret) {
+		char *name = get_name(key);
+		printf("Failed to update key \'%s:%s\' privilege in layer '%s'\n",
+		       two, nv(name), one);
+		free(name);
+	}
+	buxton_key_free(key);
+	return ret;
+}
+
 bool cli_create_group(BuxtonControl *control, BuxtonDataType type,
 		      char *one, char *two, char *three, char *four)
 {

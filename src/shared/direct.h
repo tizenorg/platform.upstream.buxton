@@ -62,6 +62,31 @@ bool buxton_direct_set_privilege(BuxtonControl *control,
 	__attribute__((warn_unused_result));
 
 /**
+ * Set a read privilege within Buxton
+ * @param control An initialized control structure
+ * @param key The key struct
+ * @param privilege A BuxtonString containing the privilege to set
+ * @return A boolean value, indicating success of the operation
+ */
+bool buxton_direct_set_read_privilege(BuxtonControl *control,
+			     _BuxtonKey *key,
+			     BuxtonString *privilege)
+	__attribute__((warn_unused_result));
+
+
+/**
+ * Set a write privilege within Buxton
+ * @param control An initialized control structure
+ * @param key The key struct
+ * @param privilege A BuxtonString containing the privilege to set
+ * @return A boolean value, indicating success of the operation
+ */
+bool buxton_direct_set_write_privilege(BuxtonControl *control,
+			     _BuxtonKey *key,
+			     BuxtonString *privilege)
+	__attribute__((warn_unused_result));
+
+/**
  * Create a group within Buxton
  * @param control An initialized control structure
  * @param key The key struct with group and layer members initialized
