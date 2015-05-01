@@ -31,6 +31,8 @@ BUXTON_1 {
 		buxton_set_read_privilege;
 		buxton_set_write_privilege;
 		buxton_get_privilege;
+		buxton_get_read_privilege;
+		buxton_get_write_privilege;
 	local:
 		*;
 };

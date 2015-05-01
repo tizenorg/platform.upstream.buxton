@@ -359,11 +359,12 @@ int buxton_set_label(BuxtonClient client,
 	return buxton_set_privilege(client, key, value, callback, data, sync);
 }
 
-int buxton_get_privilege(BuxtonClient client,
+static int buxton_get_privileges(BuxtonClient client,
 		     BuxtonKey key,
 		     BuxtonCallback callback,
 		     void *data,
-		     bool sync)
+		     bool sync,
+		     BuxtonControlMessage msg)
 {
 	bool r;
 	int ret = 0;
@@ -373,8 +374,13 @@ int buxton_get_privilege(BuxtonClient client,
 	    k->type <= BUXTON_TYPE_MIN || k->type >= BUXTON_TYPE_MAX) {
 		return EINVAL;
 	}
+	if (msg != BUXTON_CONTROL_GET_PRIV
+			&& msg != BUXTON_CONTROL_GET_READ_PRIV
+			&& msg != BUXTON_CONTROL_GET_WRITE_PRIV) {
+		return EINVAL;
+	}
 
-	r = buxton_wire_get_priv((_BuxtonClient *)client, k, callback, data);
+	r = buxton_wire_get_priv((_BuxtonClient *)client, k, callback, data, msg);
 	if (!r) {
 		return -1;
 	}
@@ -389,6 +395,35 @@ int buxton_get_privilege(BuxtonClient client,
 	}
 
 	return ret;
+}
+
+int buxton_get_privilege(BuxtonClient client,
+		     BuxtonKey key,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	return buxton_get_privileges(client, key, callback, data, sync,
+			BUXTON_CONTROL_GET_PRIV);
+}
+
+int buxton_get_read_privilege(BuxtonClient client,
+		     BuxtonKey key,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	return buxton_get_privileges(client, key, callback, data, sync,
+			BUXTON_CONTROL_GET_READ_PRIV);
+}
+int buxton_get_write_privilege(BuxtonClient client,
+		     BuxtonKey key,
+		     BuxtonCallback callback,
+		     void *data,
+		     bool sync)
+{
+	return buxton_get_privileges(client, key, callback, data, sync,
+			BUXTON_CONTROL_GET_WRITE_PRIV);
 }
 
 int buxton_get_label(BuxtonClient client,
@@ -799,7 +834,10 @@ void *buxton_response_value(BuxtonResponse response)
 	}
 
 	type = buxton_response_type(response);
-	if (type == BUXTON_CONTROL_GET || type == BUXTON_CONTROL_GET_PRIV) {
+	if (type == BUXTON_CONTROL_GET
+			|| type == BUXTON_CONTROL_GET_PRIV
+			|| type == BUXTON_CONTROL_GET_READ_PRIV
+			|| type == BUXTON_CONTROL_GET_WRITE_PRIV) {
 		d = buxton_array_get(r->data, 1);
 	} else if (type == BUXTON_CONTROL_CHANGED) {
 		if (r->data->len) {
@@ -884,7 +922,10 @@ BuxtonDataType buxton_response_value_type(BuxtonResponse response)
 	}
 
 	type = buxton_response_type(response);
-	if (type == BUXTON_CONTROL_GET || type == BUXTON_CONTROL_GET_PRIV) {
+	if (type == BUXTON_CONTROL_GET
+			|| type == BUXTON_CONTROL_GET_PRIV
+			|| type == BUXTON_CONTROL_GET_READ_PRIV
+			|| type == BUXTON_CONTROL_GET_WRITE_PRIV) {
 		d = buxton_array_get(r->data, 1);
 	} else if (type == BUXTON_CONTROL_CHANGED) {
 		if (r->data->len) {

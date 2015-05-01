@@ -132,6 +132,8 @@ bool parse_list(BuxtonControlMessage msg, size_t count, BuxtonData *list,
 		}
 		break;
 	case BUXTON_CONTROL_GET_PRIV:
+	case BUXTON_CONTROL_GET_READ_PRIV:
+	case BUXTON_CONTROL_GET_WRITE_PRIV:
 		if (count == 3) {
 			if (list[0].type != BUXTON_TYPE_STRING || list[1].type != BUXTON_TYPE_STRING ||
 			    list[2].type != BUXTON_TYPE_STRING) {
@@ -269,6 +271,8 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	case BUXTON_CONTROL_REMOVE_GROUP:
 	case BUXTON_CONTROL_GET:
 	case BUXTON_CONTROL_GET_PRIV:
+	case BUXTON_CONTROL_GET_READ_PRIV:
+	case BUXTON_CONTROL_GET_WRITE_PRIV:
 	case BUXTON_CONTROL_NOTIFY:
 		ret = buxton_cynara_check(self, client, msgid, msg,
 				&key, value, &permitted);
@@ -314,6 +318,12 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 		break;
 	case BUXTON_CONTROL_GET_PRIV:
 		data = get_priv(self, client, &key, &response);
+		break;
+	case BUXTON_CONTROL_GET_READ_PRIV:
+		data = get_read_priv(self, client, &key, &response);
+		break;
+	case BUXTON_CONTROL_GET_WRITE_PRIV:
+		data = get_write_priv(self, client, &key, &response);
 		break;
 	case BUXTON_CONTROL_UNSET:
 		unset_value(self, client, &key, &response);
@@ -416,6 +426,8 @@ send_response:
 		}
 		break;
 	case BUXTON_CONTROL_GET_PRIV:
+	case BUXTON_CONTROL_GET_READ_PRIV:
+	case BUXTON_CONTROL_GET_WRITE_PRIV:
 		if (data && !buxton_array_add(out_list, data)) {
 			abort();
 		}
@@ -575,6 +587,12 @@ void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
 	case BUXTON_CONTROL_GET_PRIV:
 		data = get_priv(self, client, key, &response);
 		break;
+	case BUXTON_CONTROL_GET_READ_PRIV:
+		data = get_read_priv(self, client, key, &response);
+		break;
+	case BUXTON_CONTROL_GET_WRITE_PRIV:
+		data = get_write_priv(self, client, key, &response);
+		break;
 	case BUXTON_CONTROL_NOTIFY:
 		register_notification(self, client, key, msgid, &response);
 		break;
@@ -603,6 +621,8 @@ void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
 	switch (msg) {
 	case BUXTON_CONTROL_GET:
 	case BUXTON_CONTROL_GET_PRIV:
+	case BUXTON_CONTROL_GET_READ_PRIV:
+	case BUXTON_CONTROL_GET_WRITE_PRIV:
 		if (data && !buxton_array_add(out_list, data)) {
 			abort();
 		}
@@ -1005,7 +1025,7 @@ end:
 	return data;
 }
 
-BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
+BuxtonData *get_read_priv(BuxtonDaemon *self, client_list_item *client,
 		      _BuxtonKey *key, int32_t *status)
 {
 	BuxtonData *data = NULL;
@@ -1043,10 +1063,71 @@ BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
 	}
 	data->type = BUXTON_TYPE_STRING;
 
-	/* TODO : priv_write ? */
 	free(priv_write.value);
 
 	data->store.d_string = priv_read;
+	buxton_debug("get privilege returned successfully from db\n");
+
+	*status = 0;
+	goto end;
+fail:
+	buxton_debug("get privilege failed\n");
+	free(data);
+	free(priv_read.value);
+	free(priv_write.value);
+	data = NULL;
+end:
+
+	return data;
+}
+
+BuxtonData *get_priv(BuxtonDaemon *self, client_list_item *client,
+		      _BuxtonKey *key, int32_t *status)
+{
+	return get_read_priv(self, client, key, status);
+}
+
+BuxtonData *get_write_priv(BuxtonDaemon *self, client_list_item *client,
+		      _BuxtonKey *key, int32_t *status)
+{
+	BuxtonData *data = NULL;
+	BuxtonString priv_read = { NULL, 0 };
+	BuxtonString priv_write = { NULL, 0 };
+	int32_t ret;
+
+	assert(self);
+	assert(client);
+	assert(key);
+	assert(status);
+
+	*status = -1;
+
+	data = malloc0(sizeof(BuxtonData));
+	if (!data) {
+		abort();
+	}
+
+	buxton_debug("Daemon getting privilege on [%s][%s][%s]\n",
+		     key->layer.value,
+		     key->group.value,
+		     key->name.value);
+
+	self->buxton.client.uid = client->cred.uid;
+
+	ret = buxton_direct_get_value(&self->buxton, key, data,
+			&priv_read, &priv_write);
+	if (ret) {
+		goto fail;
+	}
+
+	if (data->type == BUXTON_TYPE_STRING) {
+		free(data->store.d_string.value);
+	}
+	data->type = BUXTON_TYPE_STRING;
+
+	free(priv_read.value);
+
+	data->store.d_string = priv_write;
 	buxton_debug("get privilege returned successfully from db\n");
 
 	*status = 0;

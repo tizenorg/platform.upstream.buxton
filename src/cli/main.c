@@ -95,6 +95,7 @@ int main(int argc, char **argv)
 	Command c_get_label, c_set_label;
 	Command c_get_priv, c_set_priv;
 	Command c_set_read_priv, c_set_write_priv;
+	Command c_get_read_priv, c_get_write_priv;
 	Command c_create_group, c_remove_group;
 	Command c_unset_value;
 	Command c_create_db;
@@ -207,6 +208,14 @@ int main(int argc, char **argv)
 	c_get_priv = (Command) { "get-priv", "Get a value's privilege",
 				  2, 3, "layer group [name]", &cli_get_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_get_priv.name, &c_get_priv);
+
+	c_get_read_priv = (Command) { "get-read-priv", "Get a value's read privilege",
+				  2, 3, "layer group [name]", &cli_get_read_privilege, BUXTON_TYPE_UNSET };
+	hashmap_put(commands, c_get_read_priv.name, &c_get_read_priv);
+
+	c_get_write_priv = (Command) { "get-write-priv", "Get a value's write privilege",
+				  2, 3, "layer group [name]", &cli_get_write_privilege, BUXTON_TYPE_UNSET };
+	hashmap_put(commands, c_get_write_priv.name, &c_get_write_priv);
 
 	c_set_priv = (Command) { "set-priv", "Set a value's privilege",
 				  3, 4, "layer group [name] privilege", &cli_set_privilege, BUXTON_TYPE_UNSET };

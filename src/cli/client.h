@@ -153,6 +153,16 @@ bool cli_get_privilege(BuxtonControl *control,
 		   char *one, char *two, char *three,
 		   __attribute__((unused)) char *four)
 	__attribute__((warn_unused_result));
+bool cli_get_read_privilege(BuxtonControl *control,
+		   __attribute__((unused)) BuxtonDataType type,
+		   char *one, char *two, char *three,
+		   __attribute__((unused)) char *four)
+	__attribute__((warn_unused_result));
+bool cli_get_write_privilege(BuxtonControl *control,
+		   __attribute__((unused)) BuxtonDataType type,
+		   char *one, char *two, char *three,
+		   __attribute__((unused)) char *four)
+	__attribute__((warn_unused_result));
 
 /**
  * Set a value in Buxton

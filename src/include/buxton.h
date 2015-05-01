@@ -77,6 +77,8 @@ typedef enum BuxtonControlMessage {
 	BUXTON_CONTROL_LIST_NAMES, /**<List names within Buxton */
 	BUXTON_CONTROL_SET_READ_PRIV, /**<Set a read privilege */
 	BUXTON_CONTROL_SET_WRITE_PRIV, /**<Set a write privilege */
+	BUXTON_CONTROL_GET_READ_PRIV, /**<Get a read privilege */
+	BUXTON_CONTROL_GET_WRITE_PRIV, /**<Get a write privilege */
 	BUXTON_CONTROL_MAX
 } BuxtonControlMessage;
 
@@ -301,6 +303,10 @@ _bx_export_ int buxton_get_label(BuxtonClient client,
 
 /**
  * Retrieve a privilege from Buxton
+ *
+ * @note From ver. 6, this function returns only read privilege.
+ * deprecated. use buxton_get_read_privilege or buxton_get_write_privilege
+ *
  * @param client An open client connection
  * @param key The key or group to retrieve
  * @param callback A callback function to handle daemon reply
@@ -309,6 +315,38 @@ _bx_export_ int buxton_get_label(BuxtonClient client,
  * @return An int value, indicating success of the operation
  */
 _bx_export_ int buxton_get_privilege(BuxtonClient client,
+				 BuxtonKey key,
+				 BuxtonCallback callback,
+				 void *data,
+				 bool sync)
+	__attribute__((warn_unused_result));
+
+/**
+ * Retrieve a read privilege from Buxton
+ * @param client An open client connection
+ * @param key The key or group to retrieve
+ * @param callback A callback function to handle daemon reply
+ * @param data User data to be used with callback function
+ * @param sync Indicator for running a synchronous request
+ * @return An int value, indicating success of the operation
+ */
+_bx_export_ int buxton_get_read_privilege(BuxtonClient client,
+				 BuxtonKey key,
+				 BuxtonCallback callback,
+				 void *data,
+				 bool sync)
+	__attribute__((warn_unused_result));
+
+/**
+ * Retrieve a write privilege from Buxton
+ * @param client An open client connection
+ * @param key The key or group to retrieve
+ * @param callback A callback function to handle daemon reply
+ * @param data User data to be used with callback function
+ * @param sync Indicator for running a synchronous request
+ * @return An int value, indicating success of the operation
+ */
+_bx_export_ int buxton_get_write_privilege(BuxtonClient client,
 				 BuxtonKey key,
 				 BuxtonCallback callback,
 				 void *data,

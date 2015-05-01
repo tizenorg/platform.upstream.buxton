@@ -141,10 +141,12 @@ bool buxton_wire_set_priv(_BuxtonClient *client, _BuxtonKey *key,
  * @param key Key or group name
  * @param callback A callback function to handle daemon reply
  * @param data User data to be used with callback function
+ * @param msg Message type for indicating which privilege
  * @return a boolean value, indicating success of the operation
  */
 bool buxton_wire_get_priv(_BuxtonClient *client, _BuxtonKey *key,
-			   BuxtonCallback callback, void *data)
+			   BuxtonCallback callback, void *data,
+			   BuxtonControlMessage msg)
 	__attribute__((warn_unused_result));
 
 /**

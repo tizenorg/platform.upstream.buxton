@@ -728,10 +728,14 @@ end:
 }
 
 bool buxton_wire_get_priv(_BuxtonClient *client, _BuxtonKey *key,
-			   BuxtonCallback callback, void *data)
+			   BuxtonCallback callback, void *data,
+			   BuxtonControlMessage msg)
 {
 	assert(client);
 	assert(key);
+	assert(msg == BUXTON_CONTROL_GET_PRIV
+			|| msg == BUXTON_CONTROL_GET_READ_PRIV
+			|| msg == BUXTON_CONTROL_GET_WRITE_PRIV);
 
 	_cleanup_free_ uint8_t *send = NULL;
 	bool ret = false;
@@ -762,14 +766,14 @@ bool buxton_wire_get_priv(_BuxtonClient *client, _BuxtonKey *key,
 		}
 	}
 
-	send_len = buxton_serialize_message(&send, BUXTON_CONTROL_GET_PRIV, msgid, list);
+	send_len = buxton_serialize_message(&send, msg, msgid, list);
 
 	if (send_len == 0) {
 		goto end;
 	}
 
 	if (!send_message(client, send, send_len, callback, data, msgid,
-			  BUXTON_CONTROL_GET_PRIV, key)) {
+			  msg, key)) {
 		goto end;
 	}
 

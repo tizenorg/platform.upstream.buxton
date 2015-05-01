@@ -264,7 +264,7 @@ void get_priv_callback(BuxtonResponse response, void *data)
 	*r = buxton_response_value(response);
 }
 
-bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
+bool cli_get_read_privilege(BuxtonControl *control, BuxtonDataType type,
 		   char *one, char *two, char *three,
 		   __attribute__((unused)) char *four)
 {
@@ -274,7 +274,6 @@ bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 	char *layer = one;
 	char *group = two;
 	char *name = three;
-
 
 	BuxtonData ddata;
 	BuxtonString dpriv_read;
@@ -293,6 +292,7 @@ bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 	if (control->client.direct) {
 		ddata.type = BUXTON_TYPE_UNSET;
 		dpriv_read.value = NULL;
+		dpriv_write.value = NULL;
 		ret = buxton_direct_get_value_for_layer(control, key, &ddata,
 				&dpriv_read, &dpriv_write);
 		if (ddata.type == BUXTON_TYPE_STRING) {
@@ -301,7 +301,7 @@ bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 		priv_read = dpriv_read.value;
 		priv_write = dpriv_write.value;
 	} else {
-		ret = buxton_get_privilege(&control->client,
+		ret = buxton_get_read_privilege(&control->client,
 					      key,
 					      get_priv_callback,
 					      &priv_read, true);
@@ -312,8 +312,67 @@ bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
 		return false;
 	}
 
-	printf("[%s] %s:%s - '%s' '%s'\n", layer, group, name,
-			priv_read, priv_write ? priv_write : "");
+	printf("[%s] %s:%s - '%s'\n", layer, group, name, priv_read);
+
+	return true;
+}
+
+bool cli_get_privilege(BuxtonControl *control, BuxtonDataType type,
+		   char *one, char *two, char *three,
+		   __attribute__((unused)) char *four)
+{
+	return cli_get_read_privilege(control, type, one, two, three, four);
+}
+
+bool cli_get_write_privilege(BuxtonControl *control, BuxtonDataType type,
+		   char *one, char *two, char *three,
+		   __attribute__((unused)) char *four)
+{
+	BuxtonKey key;
+	_cleanup_free_ char *priv_read = NULL;
+	_cleanup_free_ char *priv_write = NULL;
+	char *layer = one;
+	char *group = two;
+	char *name = three;
+
+	BuxtonData ddata;
+	BuxtonString dpriv_read;
+	BuxtonString dpriv_write;
+	bool ret = false;
+
+	if (!layer || !group) {
+		return false;
+	}
+
+	key = buxton_key_create(group, name, layer, type);
+	if (!key) {
+		return false;
+	}
+
+	if (control->client.direct) {
+		ddata.type = BUXTON_TYPE_UNSET;
+		dpriv_read.value = NULL;
+		dpriv_write.value = NULL;
+		ret = buxton_direct_get_value_for_layer(control, key, &ddata,
+				&dpriv_read, &dpriv_write);
+		if (ddata.type == BUXTON_TYPE_STRING) {
+			free(ddata.store.d_string.value);
+		}
+		priv_read = dpriv_read.value;
+		priv_write = dpriv_write.value;
+	} else {
+		ret = buxton_get_write_privilege(&control->client,
+					      key,
+					      get_priv_callback,
+					      &priv_write, true);
+	}
+	if (ret) {
+		printf("Requested key not found in layer \'%s\': %s:%s\n",
+		       layer, group, name);
+		return false;
+	}
+
+	printf("[%s] %s:%s - '%s'\n", layer, group, name, priv_write);
 
 	return true;
 }
