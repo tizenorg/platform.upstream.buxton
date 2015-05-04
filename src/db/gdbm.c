@@ -152,7 +152,9 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 	datum value;
 	_cleanup_free_ uint8_t *data_store = NULL;
 	size_t size;
-	BuxtonData cdata = {0};
+	BuxtonData cdata = {
+		.type = BUXTON_TYPE_UNSET,
+	};
 	BuxtonString cread_priv = { NULL, 0 };
 	BuxtonString cwrite_priv = { NULL, 0 };
 
@@ -167,22 +169,27 @@ static int set_value(BuxtonLayer *layer, _BuxtonKey *key, BuxtonData *data,
 		goto end;
 	}
 
-	/* set_priv will pass a NULL for data */
-	if (!data || !read_priv || !write_priv) {
-		cvalue = gdbm_fetch(db, key_data);
-		if (cvalue.dsize < 0 || cvalue.dptr == NULL) {
-			ret = ENOENT;
-			goto end;
-		}
-
+	cvalue = gdbm_fetch(db, key_data);
+	if (cvalue.dptr) {
 		data_store = (uint8_t*)cvalue.dptr;
 		buxton_deserialize(data_store, cvalue.dsize, &cdata,
 				&cread_priv, &cwrite_priv);
-		data = data ? data : &cdata;
-		read_priv = read_priv ? read_priv : &cread_priv;
-		write_priv = write_priv ? write_priv : &cwrite_priv;
 		data_store = NULL;
+	} else {
+		cread_priv.value = strdup("");
+		cread_priv.length = 1;
+		cwrite_priv.value = strdup("");
+		cwrite_priv.length = 1;
 	}
+
+	if (!data && cdata.type == BUXTON_TYPE_UNSET) {
+		ret = ENOENT;
+		goto end;
+	}
+
+	data = data ? data : &cdata;
+	read_priv = read_priv ? read_priv : &cread_priv;
+	write_priv = write_priv ? write_priv : &cwrite_priv;
 
 	size = buxton_serialize(data, read_priv, write_priv, &data_store);
 

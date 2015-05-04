@@ -194,9 +194,6 @@ bool buxton_direct_set_value(BuxtonControl *control,
 	BuxtonBackend *backend;
 	BuxtonLayer *layer;
 	BuxtonConfig *config;
-	BuxtonString default_priv = buxton_string_pack("");
-	BuxtonString *priv_read;
-	BuxtonString *priv_write;
 	_cleanup_buxton_data_ BuxtonData *g = NULL;
 	_cleanup_buxton_key_ _BuxtonKey *group = NULL;
 	_cleanup_buxton_string_ BuxtonString *group_read_priv = NULL;
@@ -241,9 +238,6 @@ bool buxton_direct_set_value(BuxtonControl *control,
 		goto fail;
 	}
 
-	priv_read = read_priv ? read_priv : &default_priv;
-	priv_write = write_priv ? write_priv : &default_priv;
-
 	config = &control->config;
 	if ((layer = hashmap_get(config->layers, key->layer.value)) == NULL) {
 		goto fail;
@@ -258,7 +252,7 @@ bool buxton_direct_set_value(BuxtonControl *control,
 	assert(backend);
 
 	layer->uid = control->client.uid;
-	ret = backend->set_value(layer, key, data, priv_read, priv_write);
+	ret = backend->set_value(layer, key, data, read_priv, write_priv);
 	if (ret) {
 		buxton_debug("set value failed: %s\n", strerror(ret));
 	} else {
