@@ -251,13 +251,17 @@ bool cli_remove_group(BuxtonControl *control, BuxtonDataType type,
 void get_priv_callback(BuxtonResponse response, void *data)
 {
 	void **r = data;
+	int32_t res;
 
 	*r = NULL;
-	if (buxton_response_status(response) != 0) {
+	res = buxton_response_status(response);
+	if (res != 0) {
+		printf("The status of response is not ok (%d)\n", res);
 		return;
 	}
 
 	if (buxton_response_value_type(response) != BUXTON_TYPE_STRING) {
+		printf("The type of value is not string\n");
 		return;
 	}
 
@@ -564,14 +568,18 @@ void get_value_callback(BuxtonResponse response, void *data)
 {
 	BuxtonData *r = (BuxtonData *)data;
 	void *p;
+	int32_t res;
 
 	r->type = BUXTON_TYPE_UNSET;
-	if (buxton_response_status(response) != 0) {
+	res = buxton_response_status(response);
+	if (res != 0) {
+		printf("The status of response is not ok (%d)\n", res);
 		return;
 	}
 
 	p = buxton_response_value(response);
 	if (!p) {
+		printf("The value of response is NULL\n");
 		return;
 	}
 
@@ -783,6 +791,7 @@ void list_names_callback(BuxtonResponse response, void *data)
 
 	list->status = buxton_response_status(response);
 	if (list->status != 0) {
+		printf("The status of response is not ok (%d)\n", list->status);
 		return;
 	}
 
