@@ -166,32 +166,6 @@ static char *buxton_cynara_get_priv(BuxtonControl *control,
 	return str;
 }
 
-static char *buxton_cynara_get_user(uid_t uid)
-{
-	char *user;
-	int ret;
-	struct passwd pwd;
-	struct passwd *re;
-	char buf[4096];
-
-	ret = getpwuid_r(uid, &pwd, buf, sizeof(buf), &re);
-	if (ret != 0) {
-		buxton_log("Get username: uid %d: %s\n", uid, strerror(ret));
-		return NULL;
-	}
-
-	if (re == NULL) {
-		buxton_log("Get username: uid %d not exist\n", uid);
-		return NULL;
-	}
-
-	user = strdup(pwd.pw_name);
-	if (!user)
-		return NULL;
-
-	return user;
-}
-
 static int buxton_cynara_check_cache(const char *client, const char *user, const char *priv)
 {
 	int ret;
@@ -461,7 +435,7 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 {
 	_cleanup_free_ char *priv = NULL;
 	int res;
-	_cleanup_free_ char *user = NULL;
+	char user[16];
 	int ret;
 
 	if (!cynara) {
@@ -470,11 +444,7 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 		return true;
 	}
 
-	user = buxton_cynara_get_user(client->cred.uid);
-	if (!user) {
-		*permitted = false;
-		return true;
-	}
+	snprintf(user, sizeof(user), "%u", client->cred.uid);
 
 	/* check key privilege */
 	priv = buxton_cynara_get_priv(&self->buxton, key, msg);
