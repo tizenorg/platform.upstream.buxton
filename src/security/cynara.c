@@ -352,7 +352,11 @@ static void handle_request(struct BuxtonRequest *req)
 	hashmap_remove(requests, req);
 	if (req->key_perm == BUXTON_CYNARA_DENIED) {
 		send_error_reply(req->daemon, req->client, req->msgid);
-		buxton_log("Key access denied\n");
+		buxton_log("'%s' access '%s;%u' denied\n",
+				req->key->name.value,
+				req->client->smack_label->value,
+				req->client->cred.uid);
+
 	} else { /* allowed */
 		buxtond_handle_queued_message(req->daemon, req->client,
 				req->msgid, req->type,
@@ -457,8 +461,12 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 	res = buxton_cynara_check_cache(client->smack_label->value, user, priv);
 	if (res != BUXTON_CYNARA_UNKNOWN) {
 		*permitted = (res == BUXTON_CYNARA_ALLOWED);
-		if (!*permitted)
-			buxton_log("Key access '%s' denied\n", priv);
+		if (!*permitted) {
+			buxton_log("'%s' access '%s;%s;%s' denied\n",
+					key->name.value,
+					client->smack_label->value,
+					user, priv);
+		}
 		return true;
 	}
 
