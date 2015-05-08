@@ -30,6 +30,7 @@
 static Hashmap *_smackrules = NULL;
 /* set to true unless Smack support is not detected by the daemon */
 static bool have_smack = true;
+static bool permissive;
 
 #define smack_check() do { if (!have_smack) { return true; } } while (0);
 
@@ -37,6 +38,27 @@ static bool have_smack = true;
 bool buxton_smack_enabled(void)
 {
 	return have_smack;
+}
+
+static bool buxton_get_permissive_mode(void)
+{
+	FILE *fp;
+	int d;
+	int r;
+
+	fp = fopen(buxton_smack_permissive(), "r");
+	if (!fp)
+		return false;
+
+	r = fscanf(fp, "%d\n", &d);
+	fclose(fp);
+
+	if (r != 1)
+		return false;
+
+	buxton_log("Smack permissive mode %s\n", d ? "On" : "Off");
+
+	return !!d;
 }
 
 bool buxton_cache_smack_rules(void)
@@ -65,6 +87,8 @@ bool buxton_cache_smack_rules(void)
 		have_smack = false;
 		goto end;
 	}
+
+	permissive = buxton_get_permissive_mode();
 
 	load_file = fopen(buxton_smack_load_file(), "r");
 
@@ -160,6 +184,10 @@ bool buxton_check_smack_access(BuxtonString *subject, BuxtonString *object, Buxt
 	buxton_debug("Subject: %s\n", subject->value);
 	buxton_debug("Object: %s\n", object->value);
 
+	/* permissive mode */
+	if (permissive)
+		return true;
+
 	/* check the builtin Smack rules first */
 	if (streq(subject->value, "*")) {
 		return false;
@@ -243,6 +271,10 @@ int buxton_watch_smack_rules(void)
 		buxton_log("inotify_add_watch(): %m\n");
 		return -1;
 	}
+
+	/* If permissive mode is supported */
+	inotify_add_watch(fd, buxton_smack_permissive(), IN_CLOSE_WRITE);
+
 	return fd;
 }
 

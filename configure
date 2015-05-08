@@ -649,6 +649,7 @@ MANPAGE_FALSE
 MANPAGE_TRUE
 DEBUG_FALSE
 DEBUG_TRUE
+SMACK_PERMISSIVE
 SMACK_LOAD_FILE
 BUXTON_SOCKET
 DB_PATH
@@ -804,6 +805,7 @@ with_config_path
 with_db_path
 with_socket_path
 with_smack_load_file
+with_smack_permissive
 enable_debug
 enable_manpages
 enable_coverage
@@ -1487,6 +1489,8 @@ Optional Packages:
                           path to buxton socket file
   --with-smack-load-file=SMACKLOADFILE
                           path to smack load2 file
+  --with-smack-permissive=SMACKPERMISSIVE
+                          path to smack permissive file
 
 Some influential environment variables:
   CC          C compiler command
@@ -14429,6 +14433,17 @@ else
 fi
 
 SMACK_LOAD_FILE="${smack_load_file}"
+
+
+
+# Check whether --with-smack-permissive was given.
+if test "${with_smack_permissive+set}" = set; then :
+  withval=$with_smack_permissive; smack_permissive=${withval}
+else
+  smack_permissive="/sys/fs/smackfs/permissive"
+fi
+
+SMACK_PERMISSIVE="${smack_permissive}"
 
 
 # Check whether --enable-debug was given.

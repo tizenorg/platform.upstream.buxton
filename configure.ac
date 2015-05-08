@@ -154,6 +154,12 @@ AC_ARG_WITH([smack-load-file], AS_HELP_STRING([--with-smack-load-file=SMACKLOADF
 SMACK_LOAD_FILE="${smack_load_file}"
 AC_SUBST(SMACK_LOAD_FILE)
 
+AC_ARG_WITH([smack-permissive], AS_HELP_STRING([--with-smack-permissive=SMACKPERMISSIVE],
+	[path to smack permissive file]), [smack_permissive=${withval}],
+	[smack_permissive="/sys/fs/smackfs/permissive"])
+SMACK_PERMISSIVE="${smack_permissive}"
+AC_SUBST(SMACK_PERMISSIVE)
+
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [enable debug mode @<:@default=no@:>@]),
 	      [], [enable_debug=no])
 AS_IF([test "x$enable_debug" = "xyes"],

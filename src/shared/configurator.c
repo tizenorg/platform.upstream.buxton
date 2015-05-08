@@ -62,7 +62,8 @@ static const char *KS[CONFIG_MAX] = {
 	"BUXTON_MODULE_DIR",
 	"BUXTON_DB_PATH",
 	"BUXTON_SMACK_LOAD_FILE",
-	"BUXTON_BUXTON_SOCKET"
+	"BUXTON_BUXTON_SOCKET",
+	"BUXTON_SMACK_PERMISSIVE"
 };
 
 /**
@@ -75,7 +76,8 @@ static const char *config_keys[CONFIG_MAX] = {
 	"ModuleDirectory",
 	"DatabasePath",
 	"SmackLoadFile",
-	"SocketPath"
+	"SocketPath",
+	"SmackPermissive"
 };
 
 static const char *COMPILE_DEFAULT[CONFIG_MAX] = {
@@ -84,7 +86,8 @@ static const char *COMPILE_DEFAULT[CONFIG_MAX] = {
 	_MODULE_DIRECTORY,
 	_DB_PATH,
 	_SMACK_LOAD_FILE,
-	_BUXTON_SOCKET
+	_BUXTON_SOCKET,
+	_SMACK_PERMISSIVE
 };
 
 /**
@@ -274,6 +277,12 @@ const char* buxton_smack_load_file(void)
 {
 	initialize();
 	return (const char*)conf.keys[CONFIG_SMACK_LOAD_FILE];
+}
+
+const char* buxton_smack_permissive(void)
+{
+	initialize();
+	return (const char*)conf.keys[CONFIG_SMACK_PERMISSIVE];
 }
 
 const char* buxton_socket(void)

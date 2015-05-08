@@ -27,6 +27,7 @@ typedef enum ConfigKey {
 	CONFIG_DB_PATH,
 	CONFIG_SMACK_LOAD_FILE,
 	CONFIG_BUXTON_SOCKET,
+	CONFIG_SMACK_PERMISSIVE,
 	CONFIG_MAX
 } ConfigKey;
 
@@ -92,6 +93,17 @@ const char *buxton_db_path(void)
  * It belongs to configurator.
  */
 const char *buxton_smack_load_file(void)
+	__attribute__((warn_unused_result));
+
+/**
+ * @internal
+ * @brief Get the path of the smack permissive.
+ *
+ *
+ * @return the path of the smack permissive file. Do not free this pointer.
+ * It belongs to configurator.
+ */
+const char *buxton_smack_permissive(void)
 	__attribute__((warn_unused_result));
 
 /**
