@@ -2,6 +2,7 @@
  * This file is part of buxton.
  *
  * Copyright (C) 2013 Intel Corporation
+ * Copyright (C) 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * buxton is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -286,7 +287,8 @@ static int buxton_set_privileges(BuxtonClient client,
 	BuxtonString v;
 	_BuxtonKey *k = (_BuxtonKey *)key;
 
-	if (!k || !k->group.value || !k->layer.value || !value) {
+	if (!k || !k->group.value || !k->layer.value || !k->name.value
+			|| !value) {
 		return EINVAL;
 	}
 	if (msg != BUXTON_CONTROL_SET_PRIV
@@ -370,7 +372,7 @@ static int buxton_get_privileges(BuxtonClient client,
 	int ret = 0;
 	_BuxtonKey *k = (_BuxtonKey *)key;
 
-	if (!k || !k->group.value || !k->layer.value ||
+	if (!k || !k->group.value || !k->layer.value || !k->name.value ||
 	    k->type <= BUXTON_TYPE_MIN || k->type >= BUXTON_TYPE_MAX) {
 		return EINVAL;
 	}

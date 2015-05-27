@@ -104,7 +104,6 @@ static char *buxton_cynara_get_priv_str(BuxtonControlMessage msg,
 	switch (msg) {
 	case BUXTON_CONTROL_SET:
 	case BUXTON_CONTROL_UNSET:
-	case BUXTON_CONTROL_REMOVE_GROUP:
 		priv = priv_write;
 		break;
 	case BUXTON_CONTROL_GET:

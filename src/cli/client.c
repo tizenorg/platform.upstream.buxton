@@ -2,6 +2,7 @@
  * This file is part of buxton.
  *
  * Copyright (C) 2013 Intel Corporation
+ * Copyright (C) 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * buxton is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -81,21 +82,11 @@ bool cli_set_privilege(BuxtonControl *control, BuxtonDataType type,
 	BuxtonKey key;
 	bool ret = false;
 
-	if (four != NULL) {
-		key = buxton_key_create(two, three, one, type);
-	} else {
-		key = buxton_key_create(two, NULL, one, type);
-	}
-
-	if (!key) {
+	key = buxton_key_create(two, three, one, type);
+	if (!key)
 		return ret;
-	}
 
-	if (four != NULL) {
-		privilege = buxton_string_pack(four);
-	} else {
-		privilege = buxton_string_pack(three);
-	}
+	privilege = buxton_string_pack(four);
 
 	if (control->client.direct) {
 		ret = buxton_direct_set_privilege(control, (_BuxtonKey *)key, &privilege);
@@ -121,21 +112,11 @@ bool cli_set_read_privilege(BuxtonControl *control, BuxtonDataType type,
 	BuxtonKey key;
 	bool ret = false;
 
-	if (four != NULL) {
-		key = buxton_key_create(two, three, one, type);
-	} else {
-		key = buxton_key_create(two, NULL, one, type);
-	}
-
-	if (!key) {
+	key = buxton_key_create(two, three, one, type);
+	if (!key)
 		return ret;
-	}
 
-	if (four != NULL) {
-		privilege = buxton_string_pack(four);
-	} else {
-		privilege = buxton_string_pack(three);
-	}
+	privilege = buxton_string_pack(four);
 
 	if (control->client.direct) {
 		ret = buxton_direct_set_read_privilege(control, (_BuxtonKey *)key, &privilege);
@@ -161,21 +142,11 @@ bool cli_set_write_privilege(BuxtonControl *control, BuxtonDataType type,
 	BuxtonKey key;
 	bool ret = false;
 
-	if (four != NULL) {
-		key = buxton_key_create(two, three, one, type);
-	} else {
-		key = buxton_key_create(two, NULL, one, type);
-	}
-
-	if (!key) {
+	key = buxton_key_create(two, three, one, type);
+	if (!key)
 		return ret;
-	}
 
-	if (four != NULL) {
-		privilege = buxton_string_pack(four);
-	} else {
-		privilege = buxton_string_pack(three);
-	}
+	privilege = buxton_string_pack(four);
 
 	if (control->client.direct) {
 		ret = buxton_direct_set_write_privilege(control, (_BuxtonKey *)key, &privilege);

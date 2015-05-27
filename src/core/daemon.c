@@ -2,6 +2,7 @@
  * This file is part of buxton.
  *
  * Copyright (C) 2013 Intel Corporation
+ * Copyright (C) 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * buxton is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -268,7 +269,6 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	switch (msg) {
 	case BUXTON_CONTROL_SET:
 	case BUXTON_CONTROL_UNSET:
-	case BUXTON_CONTROL_REMOVE_GROUP:
 	case BUXTON_CONTROL_GET:
 	case BUXTON_CONTROL_GET_PRIV:
 	case BUXTON_CONTROL_GET_READ_PRIV:
@@ -577,9 +577,6 @@ void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
 		break;
 	case BUXTON_CONTROL_UNSET:
 		unset_value(self, client, key, &response);
-		break;
-	case BUXTON_CONTROL_REMOVE_GROUP:
-		remove_group(self, client, key, &response);
 		break;
 	case BUXTON_CONTROL_GET:
 		data = get_value(self, client, key, &response);

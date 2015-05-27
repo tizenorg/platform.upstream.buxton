@@ -2,6 +2,7 @@
  * This file is part of buxton.
  *
  * Copyright (C) 2013 Intel Corporation
+ * Copyright (C) 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * buxton is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -288,13 +289,21 @@ static bool buxton_direct_set_privileges(BuxtonControl *control,
 		goto fail;
 	}
 
+	if (!key->name.value) {
+		buxton_log("Not permitted to set privilege on a group '%s'\n", key->group.value);
+		goto fail;
+	}
+
 	if (layer->type == LAYER_SYSTEM) {
 		char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
 		bool skip_check = (root_check && streq(root_check, "0"));
 
 		//FIXME: should check client's capability set instead of UID
 		if (control->client.uid != 0 && !skip_check) {
-			buxton_debug("Not permitted to create group '%s'\n", key->group.value);
+			buxton_debug("Not permitted to set privileges '%s' '%s' on '%s'\n",
+					read_priv ? read_priv->value : "",
+					write_priv ? write_priv->value : "",
+					key->name.value);
 			goto fail;
 		}
 	} else {
@@ -385,6 +394,17 @@ bool buxton_direct_create_group(BuxtonControl *control,
 		goto fail;
 	}
 
+	if (layer->type == LAYER_SYSTEM) {
+		char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
+		bool skip_check = (root_check && streq(root_check, "0"));
+
+		//FIXME: should check client's capability set instead of UID
+		if (control->client.uid != 0 && !skip_check) {
+			buxton_debug("Not permitted to create group '%s'\n", key->group.value);
+			goto fail;
+		}
+	}
+
 	if (buxton_direct_get_value_for_layer(control, key,
 				group, gpriv_read, gpriv_write) != ENOENT) {
 		buxton_debug("Group '%s' already exists\n", key->group.value);
@@ -449,6 +469,17 @@ bool buxton_direct_remove_group(BuxtonControl *control, _BuxtonKey *key)
 	if (layer->readonly) {
 		buxton_debug("Read-ony layer!\n");
 		goto fail;
+	}
+
+	if (layer->type == LAYER_SYSTEM) {
+		char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
+		bool skip_check = (root_check && streq(root_check, "0"));
+
+		//FIXME: should check client's capability set instead of UID
+		if (control->client.uid != 0 && !skip_check) {
+			buxton_debug("Not permitted to remove group '%s'\n", key->group.value);
+			goto fail;
+		}
 	}
 
 	if (buxton_direct_get_value_for_layer(control, key,
