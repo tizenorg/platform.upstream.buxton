@@ -1685,6 +1685,8 @@ void terminate_client(BuxtonDaemon *self, client_list_item *cl, nfds_t i)
 		buxton_list_free_all(&key_list);
 	}
 
+	buxton_cynara_cancel_requests(cl);
+
 	del_pollfd(self, i);
 	close(cl->fd);
 	if (cl->smack_label) {

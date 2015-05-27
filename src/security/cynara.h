@@ -56,6 +56,12 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 		uint32_t msgid, BuxtonControlMessage msg, _BuxtonKey *key,
 		BuxtonData *value, bool *permitted);
 
+/**
+ * Cancel requests from client
+ * @param client Client connection
+ */
+void buxton_cynara_cancel_requests(client_list_item *client);
+
 /*
  * Editor modelines  -	http://www.wireshark.org/tools/modelines.html
  *

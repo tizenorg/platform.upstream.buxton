@@ -2,6 +2,7 @@
  * This file is part of buxton.
  *
  * Copyright (C) 2013 Intel Corporation
+ * Copyright (C) 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * buxton is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -349,8 +350,6 @@ int main(int argc, char *argv[])
 
 	buxton_log("%s: Closing all connections\n", argv[0]);
 
-	buxton_cynara_finish();
-
 	if (manual_start) {
 		unlink(buxton_socket());
 	}
@@ -359,6 +358,7 @@ int main(int argc, char *argv[])
 	}
 	for (client_list_item *i = self.client_list; i;) {
 		client_list_item *j = i->item_next;
+		buxton_cynara_cancel_requests(i);
 		free(i);
 		i = j;
 	}
@@ -384,6 +384,7 @@ int main(int argc, char *argv[])
 	}
 	hashmap_free(self.notify_mapping);
 	hashmap_free(self.client_key_mapping);
+	buxton_cynara_finish();
 	buxton_direct_close(&self.buxton);
 	return EXIT_SUCCESS;
 }

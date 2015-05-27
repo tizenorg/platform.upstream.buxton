@@ -65,6 +65,7 @@ static short cynara_status_to_poll_event(cynara_async_status status)
 		evt = POLLIN | POLLOUT;
 		break;
 	default:
+		buxton_log("Abnormal Cynara status: %d\n", status);
 		evt = POLLERR | POLLHUP;
 		break;
 	}
@@ -168,6 +169,7 @@ static char *buxton_cynara_get_priv(BuxtonControl *control,
 static int buxton_cynara_check_cache(const char *client, const char *user, const char *priv)
 {
 	int ret;
+	char errmsg[128];
 
 	/* There is no privilege string, return permitted */
 	if (!priv || !*priv || *priv == '#')
@@ -187,8 +189,10 @@ static int buxton_cynara_check_cache(const char *client, const char *user, const
 		break;
 	}
 
-	buxton_debug("Cynara cache check: '%s' '%s' '%s': %d\n",
-			client, user, priv, ret);
+	errmsg[0] = '\0';
+	cynara_strerror(ret, errmsg, sizeof(errmsg));
+	buxton_debug("Cynara cache check: '%s' '%s' '%s': %d: %s\n",
+			client, user, priv, ret, errmsg);
 
 	return ret;
 }
@@ -200,9 +204,18 @@ static void release_request(struct BuxtonRequest *req)
 
 	buxton_debug("BuxtonRequest %p released\n", req);
 
-	if (cynara) {
-		if (req->key_perm == BUXTON_CYNARA_WAITING)
-			cynara_async_cancel_request(cynara, req->key_id);
+	if (cynara && req->key_perm == BUXTON_CYNARA_WAITING) {
+		int r;
+
+		r = cynara_async_cancel_request(cynara, req->key_id);
+		if (r != CYNARA_API_SUCCESS) {
+			char errmsg[128];
+
+			errmsg[0] = '\0';
+			cynara_strerror(r, errmsg, sizeof(errmsg));
+			buxton_log("Failed to cancel request %u: %s\n",
+					req->key_id, errmsg);
+		}
 	}
 
 	key_free(req->key);
@@ -317,7 +330,7 @@ static bool check_client(BuxtonDaemon *self, client_list_item *client)
 	return false;
 }
 
-static bool mark_answered(struct BuxtonRequest *req, int *perm)
+static bool mark_answered(struct BuxtonRequest *req)
 {
 	bool r;
 	struct BuxtonRequest *tmp;
@@ -330,8 +343,7 @@ static bool mark_answered(struct BuxtonRequest *req, int *perm)
 		return false;
 	}
 
-	if (perm)
-		*perm = BUXTON_CYNARA_UNKNOWN;
+	req->key_perm = BUXTON_CYNARA_UNKNOWN;
 
 	r = check_client(req->daemon, req->client);
 	if (!r) {
@@ -374,7 +386,7 @@ static void buxton_cynara_response(cynara_check_id id,
 
 	buxton_debug("check id %u, cause %d, resp %d\n", id, cause, resp);
 
-	r = mark_answered(req, &req->key_perm);
+	r = mark_answered(req);
 	if (!r)
 		return;
 
@@ -420,7 +432,11 @@ static int buxton_cynara_request(BuxtonDaemon *self, client_list_item *client,
 			client->smack_label->value, "", user, priv,
 			&id, buxton_cynara_response, req);
 	if (ret != CYNARA_API_SUCCESS) {
-		buxton_log("Cynara async request failed: %d\n", ret);
+		char errmsg[128];
+
+		errmsg[0] = '\0';
+		cynara_strerror(ret, errmsg, sizeof(errmsg));
+		buxton_log("Cynara async request failed: %d: %s\n", ret, errmsg);
 		release_request(req);
 		return -1;
 	}
@@ -479,6 +495,20 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 	return false;
 }
 
+void buxton_cynara_cancel_requests(client_list_item *client)
+{
+	Iterator it;
+	struct BuxtonRequest *req;
+
+	HASHMAP_FOREACH(req, requests, it) {
+		if (req->client != client)
+			continue;
+
+		hashmap_remove(requests, req);
+		release_request(req);
+	}
+}
+
 bool buxton_cynara_check_fd(int fd)
 {
 	if (cynara_fd == -1)
@@ -495,8 +525,13 @@ void buxton_cynara_process(void)
 		return;
 
 	r = cynara_async_process(cynara);
-	if (r != CYNARA_API_SUCCESS)
-		buxton_log("Cynara events processing error: %d\n", r);
+	if (r != CYNARA_API_SUCCESS) {
+		char errmsg[128];
+
+		errmsg[0] = '\0';
+		cynara_strerror(r, errmsg, sizeof(errmsg));
+		buxton_log("Cynara events processing error: %d: %s\n", r, errmsg);
+	}
 }
 
 int buxton_cynara_initialize(BuxtonDaemon *self)
@@ -514,7 +549,11 @@ int buxton_cynara_initialize(BuxtonDaemon *self)
 
 	r = cynara_async_initialize(&cynara, NULL, buxton_cynara_status_cb, self);
 	if (r != CYNARA_API_SUCCESS) {
-		buxton_log("Cynara initialize failed: %d\n", r);
+		char errmsg[128];
+
+		errmsg[0] = '\0';
+		cynara_strerror(r, errmsg, sizeof(errmsg));
+		buxton_log("Cynara initialize failed: %d: %s\n", r, errmsg);
 		return -1;
 	}
 
