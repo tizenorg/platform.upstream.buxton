@@ -108,9 +108,6 @@ static char *buxton_cynara_get_priv_str(BuxtonControlMessage msg,
 		priv = priv_write;
 		break;
 	case BUXTON_CONTROL_GET:
-	case BUXTON_CONTROL_GET_PRIV:
-	case BUXTON_CONTROL_GET_READ_PRIV:
-	case BUXTON_CONTROL_GET_WRITE_PRIV:
 	case BUXTON_CONTROL_NOTIFY:
 		priv = priv_read;
 		break;

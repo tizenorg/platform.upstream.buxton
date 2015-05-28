@@ -270,9 +270,6 @@ bool buxtond_handle_message(BuxtonDaemon *self, client_list_item *client, size_t
 	case BUXTON_CONTROL_SET:
 	case BUXTON_CONTROL_UNSET:
 	case BUXTON_CONTROL_GET:
-	case BUXTON_CONTROL_GET_PRIV:
-	case BUXTON_CONTROL_GET_READ_PRIV:
-	case BUXTON_CONTROL_GET_WRITE_PRIV:
 	case BUXTON_CONTROL_NOTIFY:
 		ret = buxton_cynara_check(self, client, msgid, msg,
 				&key, value, &permitted);
@@ -581,25 +578,9 @@ void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
 	case BUXTON_CONTROL_GET:
 		data = get_value(self, client, key, &response);
 		break;
-	case BUXTON_CONTROL_GET_PRIV:
-		data = get_priv(self, client, key, &response);
-		break;
-	case BUXTON_CONTROL_GET_READ_PRIV:
-		data = get_read_priv(self, client, key, &response);
-		break;
-	case BUXTON_CONTROL_GET_WRITE_PRIV:
-		data = get_write_priv(self, client, key, &response);
-		break;
 	case BUXTON_CONTROL_NOTIFY:
 		register_notification(self, client, key, msgid, &response);
 		break;
-	case BUXTON_CONTROL_SET_PRIV:
-	case BUXTON_CONTROL_SET_READ_PRIV:
-	case BUXTON_CONTROL_SET_WRITE_PRIV:
-	case BUXTON_CONTROL_CREATE_GROUP:
-	case BUXTON_CONTROL_LIST:
-	case BUXTON_CONTROL_LIST_NAMES:
-	case BUXTON_CONTROL_UNNOTIFY:
 	default:
 		goto end;
 	}
@@ -617,14 +598,10 @@ void buxtond_handle_queued_message(BuxtonDaemon *self, client_list_item *client,
 
 	switch (msg) {
 	case BUXTON_CONTROL_GET:
-	case BUXTON_CONTROL_GET_PRIV:
-	case BUXTON_CONTROL_GET_READ_PRIV:
-	case BUXTON_CONTROL_GET_WRITE_PRIV:
 		if (data && !buxton_array_add(out_list, data)) {
 			abort();
 		}
 	case BUXTON_CONTROL_SET:
-	case BUXTON_CONTROL_REMOVE_GROUP:
 	case BUXTON_CONTROL_UNSET:
 	case BUXTON_CONTROL_NOTIFY:
 		response_len = buxton_serialize_message(&response_store,
