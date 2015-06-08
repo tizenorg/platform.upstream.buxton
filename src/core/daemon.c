@@ -981,6 +981,7 @@ BuxtonData *get_value(BuxtonDaemon *self, client_list_item *client,
 	ret = buxton_direct_get_value(&self->buxton, key, data,
 			&priv_read, &priv_write);
 	if (ret) {
+		*status = ret;
 		goto fail;
 	}
 
