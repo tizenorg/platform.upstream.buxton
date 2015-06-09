@@ -4,6 +4,7 @@ Description=Buxton Configuration Service
 [Service]
 ExecStart=@prefix@/sbin/buxtond
 User=@BUXTON_USERNAME@
+Environment=BUXTON_CYNARA_PERMISSIVE_MODE=1
 
 [Install]
 WantedBy=multi-user.target

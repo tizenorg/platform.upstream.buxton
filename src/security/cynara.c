@@ -30,6 +30,8 @@
 #include "log.h"
 #include "direct.h"
 
+#define BUXTON_CYNARA_PERMISSIVE_MODE "BUXTON_CYNARA_PERMISSIVE_MODE"
+
 #define BUXTON_CYNARA_ALLOWED 1
 #define BUXTON_CYNARA_DENIED  0
 #define BUXTON_CYNARA_UNKNOWN -1
@@ -52,6 +54,7 @@ struct BuxtonRequest {
 static cynara_async *cynara;
 static Hashmap *requests;
 static int cynara_fd = -1;
+static bool cynara_skip;
 
 static short cynara_status_to_poll_event(cynara_async_status status)
 {
@@ -358,13 +361,19 @@ static void handle_request(struct BuxtonRequest *req)
 	assert(req);
 
 	hashmap_remove(requests, req);
+
 	if (req->key_perm == BUXTON_CYNARA_DENIED) {
-		send_error_reply(req->daemon, req->client, req->msgid);
-		buxton_log("'%s' access '%s;%u' denied\n",
+		buxton_log("'%s' access '%s;%u' denied%s\n",
 				req->key->name.value,
 				req->client->smack_label->value,
-				req->client->cred.uid);
+				req->client->cred.uid,
+				cynara_skip ? "(ignored)" : "");
+		if (cynara_skip)
+			req->key_perm = BUXTON_CYNARA_ALLOWED;
+	}
 
+	if (req->key_perm == BUXTON_CYNARA_DENIED) {
+		send_error_reply(req->daemon, req->client, req->msgid);
 	} else { /* allowed */
 		buxtond_handle_queued_message(req->daemon, req->client,
 				req->msgid, req->type,
@@ -474,10 +483,13 @@ bool buxton_cynara_check(BuxtonDaemon *self, client_list_item *client,
 	if (res != BUXTON_CYNARA_UNKNOWN) {
 		*permitted = (res == BUXTON_CYNARA_ALLOWED);
 		if (!*permitted) {
-			buxton_log("'%s' access '%s;%s;%s' denied\n",
+			buxton_log("'%s' access '%s;%s;%s' denied%s\n",
 					key->name.value,
 					client->smack_label->value,
-					user, priv);
+					user, priv,
+					cynara_skip ? "(ignored)" : "");
+			if (cynara_skip)
+				*permitted = true;
 		}
 		return true;
 	}
@@ -534,9 +546,14 @@ void buxton_cynara_process(void)
 int buxton_cynara_initialize(BuxtonDaemon *self)
 {
 	int r;
+	char *skip;
 
 	if (cynara)
 		return 0;
+
+	skip = getenv(BUXTON_CYNARA_PERMISSIVE_MODE);
+	if (skip && skip[0] == '1')
+		cynara_skip = true;
 
 	requests = hashmap_new(trivial_hash_func, trivial_compare_func);
 	if (!requests) {
