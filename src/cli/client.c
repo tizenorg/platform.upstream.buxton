@@ -82,11 +82,21 @@ bool cli_set_privilege(BuxtonControl *control, BuxtonDataType type,
 	BuxtonKey key;
 	bool ret = false;
 
-	key = buxton_key_create(two, three, one, type);
-	if (!key)
-		return ret;
+	if (four != NULL) {
+		key = buxton_key_create(two, three, one, type);
+	} else {
+		key = buxton_key_create(two, NULL, one, type);
+	}
 
-	privilege = buxton_string_pack(four);
+	if (!key) {
+		return ret;
+	}
+
+	if (four != NULL) {
+		privilege = buxton_string_pack(four);
+	} else {
+		privilege = buxton_string_pack(three);
+	}
 
 	if (control->client.direct) {
 		ret = buxton_direct_set_privilege(control, (_BuxtonKey *)key, &privilege);
@@ -112,11 +122,21 @@ bool cli_set_read_privilege(BuxtonControl *control, BuxtonDataType type,
 	BuxtonKey key;
 	bool ret = false;
 
-	key = buxton_key_create(two, three, one, type);
-	if (!key)
-		return ret;
+	if (four != NULL) {
+		key = buxton_key_create(two, three, one, type);
+	} else {
+		key = buxton_key_create(two, NULL, one, type);
+	}
 
-	privilege = buxton_string_pack(four);
+	if (!key) {
+		return ret;
+	}
+
+	if (four != NULL) {
+		privilege = buxton_string_pack(four);
+	} else {
+		privilege = buxton_string_pack(three);
+	}
 
 	if (control->client.direct) {
 		ret = buxton_direct_set_read_privilege(control, (_BuxtonKey *)key, &privilege);
@@ -142,11 +162,21 @@ bool cli_set_write_privilege(BuxtonControl *control, BuxtonDataType type,
 	BuxtonKey key;
 	bool ret = false;
 
-	key = buxton_key_create(two, three, one, type);
-	if (!key)
-		return ret;
+	if (four != NULL) {
+		key = buxton_key_create(two, three, one, type);
+	} else {
+		key = buxton_key_create(two, NULL, one, type);
+	}
 
-	privilege = buxton_string_pack(four);
+	if (!key) {
+		return ret;
+	}
+
+	if (four != NULL) {
+		privilege = buxton_string_pack(four);
+	} else {
+		privilege = buxton_string_pack(three);
+	}
 
 	if (control->client.direct) {
 		ret = buxton_direct_set_write_privilege(control, (_BuxtonKey *)key, &privilege);
@@ -287,7 +317,7 @@ bool cli_get_read_privilege(BuxtonControl *control, BuxtonDataType type,
 		return false;
 	}
 
-	printf("[%s] %s:%s - '%s'\n", layer, group, name, priv_read);
+	printf("[%s] %s:%s - %s\n", layer, group, name, priv_read);
 
 	return true;
 }
@@ -347,7 +377,7 @@ bool cli_get_write_privilege(BuxtonControl *control, BuxtonDataType type,
 		return false;
 	}
 
-	printf("[%s] %s:%s - '%s'\n", layer, group, name, priv_write);
+	printf("[%s] %s:%s - %s\n", layer, group, name, priv_write);
 
 	return true;
 }

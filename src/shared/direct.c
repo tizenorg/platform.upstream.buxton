@@ -289,21 +289,17 @@ static bool buxton_direct_set_privileges(BuxtonControl *control,
 		goto fail;
 	}
 
-	if (!key->name.value) {
-		buxton_log("Not permitted to set privilege on a group '%s'\n", key->group.value);
-		goto fail;
-	}
-
 	if (layer->type == LAYER_SYSTEM) {
 		char *root_check = getenv(BUXTON_ROOT_CHECK_ENV);
 		bool skip_check = (root_check && streq(root_check, "0"));
 
 		//FIXME: should check client's capability set instead of UID
 		if (control->client.uid != 0 && !skip_check) {
-			buxton_debug("Not permitted to set privileges '%s' '%s' on '%s'\n",
+			buxton_debug("Not permitted to set privileges '%s' '%s' on %s %s\n",
 					read_priv ? read_priv->value : "",
 					write_priv ? write_priv->value : "",
-					key->name.value);
+					key->group.value ? : "",
+					key->name.value ? : "");
 			goto fail;
 		}
 	} else {

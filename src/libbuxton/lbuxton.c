@@ -287,8 +287,7 @@ static int buxton_set_privileges(BuxtonClient client,
 	BuxtonString v;
 	_BuxtonKey *k = (_BuxtonKey *)key;
 
-	if (!k || !k->group.value || !k->layer.value || !k->name.value
-			|| !value) {
+	if (!k || !k->group.value || !k->layer.value || !value) {
 		return EINVAL;
 	}
 	if (msg != BUXTON_CONTROL_SET_PRIV
@@ -372,7 +371,7 @@ static int buxton_get_privileges(BuxtonClient client,
 	int ret = 0;
 	_BuxtonKey *k = (_BuxtonKey *)key;
 
-	if (!k || !k->group.value || !k->layer.value || !k->name.value ||
+	if (!k || !k->group.value || !k->layer.value ||
 	    k->type <= BUXTON_TYPE_MIN || k->type >= BUXTON_TYPE_MAX) {
 		return EINVAL;
 	}

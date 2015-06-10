@@ -207,35 +207,35 @@ int main(int argc, char **argv)
 
 	/* Privilege */
 	c_get_priv = (Command) { "get-priv", "Get a value's privilege",
-				  3, 3, "layer group name", &cli_get_privilege, BUXTON_TYPE_UNSET };
+				  2, 3, "layer group [name]", &cli_get_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_get_priv.name, &c_get_priv);
 
 	c_get_read_priv = (Command) { "get-read-priv", "Get a value's read privilege",
-				  3, 3, "layer group name", &cli_get_read_privilege, BUXTON_TYPE_UNSET };
+				  2, 3, "layer group [name]", &cli_get_read_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_get_read_priv.name, &c_get_read_priv);
 
 	c_get_write_priv = (Command) { "get-write-priv", "Get a value's write privilege",
-				  3, 3, "layer group name", &cli_get_write_privilege, BUXTON_TYPE_UNSET };
+				  2, 3, "layer group [name]", &cli_get_write_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_get_write_priv.name, &c_get_write_priv);
 
 	c_set_priv = (Command) { "set-priv", "Set a value's privilege",
-				  4, 4, "layer group name privilege", &cli_set_privilege, BUXTON_TYPE_UNSET };
+				  3, 4, "layer group [name] privilege", &cli_set_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_set_priv.name, &c_set_priv);
 
 	c_set_read_priv = (Command) { "set-read-priv", "Set a value's read privilege",
-				  4, 4, "layer group name privilege", &cli_set_read_privilege, BUXTON_TYPE_UNSET };
+				  3, 4, "layer group [name] privilege", &cli_set_read_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_set_read_priv.name, &c_set_read_priv);
 
 	c_set_write_priv = (Command) { "set-write-priv", "Set a value's write privilege",
-				  4, 4, "layer group name privilege", &cli_set_write_privilege, BUXTON_TYPE_UNSET };
+				  3, 4, "layer group [name] privilege", &cli_set_write_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_set_write_priv.name, &c_set_write_priv);
 
 	c_get_label = (Command) { "get-label", "Get a value's privilege",
-				  3, 3, "layer group name", &cli_get_privilege, BUXTON_TYPE_UNSET };
+				  2, 3, "layer group [name]", &cli_get_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_get_label.name, &c_get_label);
 
 	c_set_label = (Command) { "set-label", "Set a value's privilege",
-				  4, 4, "layer group name privilege", &cli_set_privilege, BUXTON_TYPE_UNSET };
+				  3, 4, "layer group [name] privilege", &cli_set_privilege, BUXTON_TYPE_UNSET };
 	hashmap_put(commands, c_set_label.name, &c_set_label);
 
 
